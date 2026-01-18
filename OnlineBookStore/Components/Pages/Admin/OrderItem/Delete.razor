@@ -1,0 +1,87 @@
+﻿@page "/orderitems/delete"
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStore.Domain
+@inject IDbContextFactory<OnlineBookStore.Data.OnlineBookStoreContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Delete</PageTitle>
+
+<h1>Delete</h1>
+
+<p>Are you sure you want to delete this?</p>
+<div>
+    <h2>OrderItem</h2>
+    <hr />
+    @if (orderitem is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Quantity</dt>
+            <dd class="col-sm-10">@orderitem.Quantity</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">UnitPrice</dt>
+            <dd class="col-sm-10">@orderitem.UnitPrice</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">LineTotal</dt>
+            <dd class="col-sm-10">@orderitem.LineTotal</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">OrderId</dt>
+            <dd class="col-sm-10">@orderitem.OrderId</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">BookId</dt>
+            <dd class="col-sm-10">@orderitem.BookId</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">DateCreated</dt>
+            <dd class="col-sm-10">@orderitem.DateCreated</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">DateUpdated</dt>
+            <dd class="col-sm-10">@orderitem.DateUpdated</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">CreatedBy</dt>
+            <dd class="col-sm-10">@orderitem.CreatedBy</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">UpdatedBy</dt>
+            <dd class="col-sm-10">@orderitem.UpdatedBy</dd>
+        </dl>
+        <EditForm method="post" Model="orderitem" OnValidSubmit="DeleteOrderItem" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(orderitem is null)">Delete</button> |
+            <a href="/orderitems">Back to List</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private OrderItem? orderitem;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        orderitem = await context.OrderItem.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (orderitem is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteOrderItem()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.OrderItem.Remove(orderitem!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/orderitems");
+    }
+}

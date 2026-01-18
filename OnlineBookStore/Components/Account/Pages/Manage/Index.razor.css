@@ -1,0 +1,88 @@
+﻿
+.ob-account {
+    max-width: 900px;
+    width: 100%;
+}
+
+.ob-account__header {
+    margin-bottom: 22px;
+}
+
+.ob-account__title {
+    font-size: 2rem;
+    margin: 0 0 6px 0;
+}
+
+.ob-account__subtitle {
+    margin: 0;
+    color: #6b7280;
+}
+
+.ob-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+}
+
+.ob-card__header {
+    margin-bottom: 12px;
+}
+
+.ob-card__title {
+    margin: 0 0 4px 0;
+    font-size: 1.2rem;
+}
+
+.ob-card__hint {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.ob-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.ob-field--full {
+    grid-column: 1 / -1;
+}
+
+.ob-label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: inline-block;
+}
+
+.ob-editrow {
+    margin-top: 12px;
+}
+
+.ob-editlink {
+    font-size: 0.95rem;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+    .ob-editlink:hover {
+        text-decoration: underline;
+    }
+
+.ob-footer-note {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+    .ob-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

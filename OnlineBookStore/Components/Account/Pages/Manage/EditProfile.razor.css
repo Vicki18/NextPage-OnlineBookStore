@@ -1,0 +1,99 @@
+﻿
+.ob-account {
+    max-width: 900px;
+    width: 100%;
+}
+
+.ob-account__header {
+    margin-bottom: 18px;
+}
+
+.ob-backlink {
+    display: inline-block;
+    font-size: 14px;
+    color: #2563eb;
+    text-decoration: none;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+    .ob-backlink:hover {
+        text-decoration: underline;
+    }
+
+.ob-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 22px;
+}
+
+
+.ob-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+}
+
+.ob-field--full {
+    grid-column: 1 / -1;
+}
+
+.ob-label {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+
+.ob-card .form-control {
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    padding: 10px 12px;
+    box-shadow: none;
+}
+
+    .ob-card .form-control:focus {
+        background: #ffffff;
+        border-color: #c7d2fe; 
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    
+    .ob-card .form-control:disabled {
+        color: #111827;
+        opacity: 1;
+    }
+
+
+.ob-actions {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ob-save {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
+.ob-cancel {
+    font-size: 14px;
+    color: #6b7280;
+    text-decoration: none;
+}
+
+    .ob-cancel:hover {
+        text-decoration: underline;
+    }
+
+
+
+@media (max-width: 700px) {
+    .ob-grid {
+        grid-template-columns: 1fr;
+    }
+}

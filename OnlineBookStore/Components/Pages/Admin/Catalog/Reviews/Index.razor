@@ -1,0 +1,128 @@
+﻿@page "/admin/reviews"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+@inject AdminReviewService Reviews
+
+<PageTitle>Reviews</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Reviews</h1>
+        <div class="text-muted">Moderate customer feedback and ratings.</div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-10">
+                <label class="form-label">Search</label>
+                <input class="form-control" placeholder="Book / Customer / Email / Rating / Comment..."
+                       @bind="search" @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary flex-fill" @onclick="ReloadAsync" disabled="@loading">Search</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAsync" disabled="@loading">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (items.Count == 0)
+{
+    <p class="text-muted">No reviews found.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:90px">ID</th>
+                    <th>Book</th>
+                    <th style="width:260px">Customer</th>
+                    <th style="width:140px">Rating</th>
+                    <th style="width:180px" class="text-end">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var r in items)
+                {
+                    <tr>
+                        <td class="fw-semibold">@r.Id</td>
+
+                        <td>
+                            <div class="fw-semibold">@((r.Book?.Title ?? "(Unknown Book)"))</div>
+                            <div class="text-muted small">
+                                @(r.DateCreated == default ? "" : r.DateCreated.ToString("dd MMM yyyy, HH:mm"))
+                            </div>
+                        </td>
+
+                        <td>
+                            <div class="fw-semibold">@((r.Customer?.FullName ?? "(Unknown Customer)"))</div>
+                            <div class="text-muted small">@((r.Customer?.Email ?? ""))</div>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-primary">@r.Rating / 5</span>
+                        </td>
+
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/reviews/details?id=@r.Id">View</a>
+                            <a class="btn btn-sm btn-outline-danger ms-1" href="/admin/reviews/delete?id=@r.Id">Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+
+    private string search = "";
+    private List<Review> items = new();
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            items = await Reviews.GetReviewsAsync(search);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            items = new();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task ClearAsync()
+    {
+        search = "";
+        return ReloadAsync();
+    }
+}

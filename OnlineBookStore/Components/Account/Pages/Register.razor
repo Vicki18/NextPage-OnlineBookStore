@@ -1,0 +1,193 @@
+﻿@page "/Account/Register"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using OnlineBookStore.Data
+
+@inject UserManager<OnlineBookStoreUser> UserManager
+@inject IUserStore<OnlineBookStoreUser> UserStore
+@inject SignInManager<OnlineBookStoreUser> SignInManager
+@inject ILogger<Register> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register</PageTitle>
+
+<div class="np-auth">
+    <div class="np-auth-header">
+        <h1 class="np-auth-h1">Register</h1>
+        <p class="np-auth-subtitle">Create your NextPage account to save your cart and track orders.</p>
+    </div>
+
+    <div class="np-auth-grid">
+        
+        <section class="np-auth-card">
+            <StatusMessage Message="@errorMessage" />
+
+            <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
+                <DataAnnotationsValidator />
+
+                <div class="np-auth-title">Create a new account</div>
+                <div class="np-auth-divider"></div>
+
+                <ValidationSummary class="text-danger np-auth-validation" role="alert" />
+
+                <div class="form-floating">
+                    <InputText @bind-Value="Input.Email"
+                               class="form-control np-auth-input"
+                               autocomplete="username"
+                               aria-required="true"
+                               placeholder="name@example.com" />
+                    <label class="form-label">Email</label>
+                    <ValidationMessage For="() => Input.Email" class="text-danger" />
+                </div>
+
+                <div class="form-floating">
+                    <InputText @bind-Value="Input.FirstName"
+                               class="form-control np-auth-input"
+                               autocomplete="given-name"
+                               aria-required="true"
+                               placeholder="First Name" />
+                    <label class="form-label">First Name</label>
+                    <ValidationMessage For="() => Input.FirstName" class="text-danger" />
+                </div>
+
+                <div class="form-floating">
+                    <InputText @bind-Value="Input.LastName"
+                               class="form-control np-auth-input"
+                               autocomplete="family-name"
+                               aria-required="true"
+                               placeholder="Last Name" />
+                    <label class="form-label">Last Name</label>
+                    <ValidationMessage For="() => Input.LastName" class="text-danger" />
+                </div>
+
+                <div class="form-floating">
+                    <InputText type="password"
+                               @bind-Value="Input.Password"
+                               class="form-control np-auth-input"
+                               autocomplete="new-password"
+                               aria-required="true"
+                               placeholder="password" />
+                    <label class="form-label">Password</label>
+                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+                </div>
+
+                <div class="form-floating">
+                    <InputText type="password"
+                               @bind-Value="Input.ConfirmPassword"
+                               class="form-control np-auth-input"
+                               autocomplete="new-password"
+                               aria-required="true"
+                               placeholder="confirm password" />
+                    <label class="form-label">Confirm Password</label>
+                    <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 np-auth-submit">
+                    Register
+                </button>
+
+                <div class="np-auth-links">
+                    <a class="np-auth-link"
+                       href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+                        Already have an account? Log in
+                    </a>
+                </div>
+            </EditForm>
+        </section>
+
+        
+        <section class="np-auth-card np-auth-external" hidden="@(!showExternal)">
+            <div class="np-auth-title">Or continue with</div>
+            <div class="np-auth-divider"></div>
+            <ExternalLoginPicker />
+        </section>
+    </div>
+</div>
+
+@code {
+    private string? errorMessage;
+    private bool showExternal;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+
+        var schemes = await SignInManager.GetExternalAuthenticationSchemesAsync();
+        showExternal = schemes.Any();
+    }
+
+    private async Task RegisterUser()
+    {
+        var user = new OnlineBookStoreUser
+        {
+            UserName = Input.Email,
+            Email = Input.Email,
+            FirstName = Input.FirstName,
+            LastName = Input.LastName
+        };
+
+        var result = await UserManager.CreateAsync(user, Input.Password);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User created a new account with password.");
+
+            
+            await UserManager.AddToRoleAsync(user, "User");
+
+            await SignInManager.SignInAsync(user, isPersistent: false);
+            RedirectManager.RedirectTo(ReturnUrl);
+            return;
+        }
+
+        if (result.Errors.Any(e =>
+            e.Code.Contains("Duplicate", StringComparison.OrdinalIgnoreCase)))
+        {
+            errorMessage = "An account with this email already exists. Please log in or reset your password.";
+        }
+        else
+        {
+            errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [Display(Name = "First Name")]
+        public string FirstName { get; set; } = "";
+
+        [Required]
+        [Display(Name = "Last Name")]
+        public string LastName { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

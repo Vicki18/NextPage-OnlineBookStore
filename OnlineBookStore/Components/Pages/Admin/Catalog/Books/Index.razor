@@ -1,0 +1,134 @@
+﻿@page "/admin/books"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+@inject AdminBookService Books
+
+<PageTitle>Books</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Books</h1>
+        <div class="text-muted">Manage inventory, pricing and stock.</div>
+    </div>
+    <a class="btn btn-primary" href="/admin/books/create">+ New Book</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-7">
+                <label class="form-label">Search</label>
+                <input class="form-control" placeholder="Title / ISBN / Author / Category"
+                       @bind="search" @bind:event="oninput" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Sort by</label>
+                <select class="form-select" @bind="sort">
+                    <option value="title_asc">Title (A–Z)</option>
+                    <option value="title_desc">Title (Z–A)</option>
+                    <option value="price_asc">Price (Low → High)</option>
+                    <option value="price_desc">Price (High → Low)</option>
+                    <option value="stock_asc">Stock (Low → High)</option>
+                    <option value="stock_desc">Stock (High → Low)</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary flex-fill" @onclick="ReloadAsync" disabled="@loading">Search</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAsync" disabled="@loading">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (items.Count == 0)
+{
+    <p class="text-muted">No books found.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:90px">ID</th>
+                    <th>Title</th>
+                    <th style="width:180px">Author</th>
+                    <th style="width:180px">Category</th>
+                    <th style="width:120px" class="text-end">Price</th>
+                    <th style="width:110px" class="text-end">Stock</th>
+                    <th style="width:220px" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in items)
+                {
+                    <tr>
+                        <td class="fw-semibold">@b.Id</td>
+                        <td>
+                            <div class="fw-semibold">@((b.Title ?? "(Untitled)"))</div>
+                            <div class="text-muted small">@((b.ISBN ?? ""))</div>
+                        </td>
+                        <td>@(b.Author?.Name ?? "-")</td>
+                        <td>@(b.Category?.CategoryName ?? "-")</td>
+                        <td class="text-end fw-semibold">$@b.Price.ToString("0.00")</td>
+                        <td class="text-end">@b.StockQty</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/books/details?id=@b.Id">View</a>
+                            <a class="btn btn-sm btn-outline-secondary ms-1" href="/admin/books/edit?id=@b.Id">Edit</a>
+                            <a class="btn btn-sm btn-outline-danger ms-1" href="/admin/books/delete?id=@b.Id">Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+
+    private string search = "";
+    private string sort = "title_asc";
+    private List<Book> items = new();
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            items = await Books.GetBooksAsync(search, sort);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            items = new();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task ClearAsync()
+    {
+        search = "";
+        sort = "title_asc";
+        return ReloadAsync();
+    }
+}

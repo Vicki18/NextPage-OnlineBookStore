@@ -1,0 +1,166 @@
+﻿
+.content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 48px;
+}
+
+.np-hero {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 32px;
+    margin-bottom: 24px;
+}
+
+.np-hero-left {
+    background: #fafafa;
+    border-radius: 18px;
+    padding: clamp(22px, 3vw, 36px) clamp(22px, 3.2vw, 40px);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.06);
+}
+
+.np-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(30, 58, 138, 0.06);
+    border: 1px solid rgba(30, 58, 138, 0.16);
+    color: #0f172a;
+    margin-bottom: 18px;
+}
+
+.np-title {
+    font-size: clamp(1.95rem, 2.2vw, 2.3rem);
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+}
+
+.np-subtitle {
+    font-size: 0.98rem;
+    color: #4b5563;
+    max-width: 62ch;
+    line-height: 1.65;
+    margin-bottom: 24px;
+}
+
+.np-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.np-note {
+    font-size: 0.92rem;
+    color: #374151;
+}
+
+    .np-note a {
+        font-weight: 700;
+    }
+
+.np-hero-right {
+    min-height: clamp(320px, 46vh, 520px);
+    aspect-ratio: 16 / 10;
+    border-radius: 18px;
+    background-image: url("/images/bookstore-hero.jpg");
+    background-size: cover;
+    background-position: center 62%;
+    background-repeat: no-repeat;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.10);
+}
+
+.np-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+}
+
+.np-feature {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+}
+
+.np-feature-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.np-feature-text {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+@media (max-width: 992px) {
+    .content {
+        padding: 18px 16px;
+    }
+
+    .np-hero {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .np-hero-right {
+        background-position: center;
+    }
+
+    .np-features {
+        grid-template-columns: 1fr;
+    }
+}
+
+.np-welcome {
+    margin-top: 18px;
+    margin-bottom: 18px;
+    font-size: 1.05rem;
+    color: #111827;
+}
+
+.np-welcome-name {
+    font-weight: 700;
+}
+
+.np-hero-actions-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+
+@media (max-width: 768px) {
+    .np-hero-actions-row {
+        justify-content: center;
+    }
+
+    .np-welcome {
+        text-align: center;
+    }
+}
+
+.np-admin-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 18px;
+}
+
+.np-admin-dashboard-btn {
+    min-width: 260px;
+    padding: 14px 22px;
+    font-weight: 800;
+    border-radius: 14px;
+}
+
+

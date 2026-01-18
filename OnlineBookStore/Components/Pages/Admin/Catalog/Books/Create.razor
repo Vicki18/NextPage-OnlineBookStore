@@ -1,0 +1,127 @@
+﻿@page "/admin/books/create"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject AdminBookService Books
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>Create Book</PageTitle>
+
+<h1 class="mb-1">Create Book</h1>
+<div class="text-muted mb-3">Add a new book into your catalog.</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<EditForm Model="model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">Title</label>
+                    <InputText class="form-control" @bind-Value="model.Title" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">ISBN</label>
+                    <InputText class="form-control" @bind-Value="model.ISBN" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <InputTextArea class="form-control" @bind-Value="model.Description" rows="3" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Price</label>
+                    <InputNumber class="form-control" @bind-Value="model.Price" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Stock Qty</label>
+                    <InputNumber class="form-control" @bind-Value="model.StockQty" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Cover Image URL</label>
+                    <InputText class="form-control" @bind-Value="model.CoverImageUrl" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Author</label>
+                    <select class="form-select" @bind="model.AuthorId">
+                        <option value="0">-- Select author --</option>
+                        @foreach (var a in authors)
+                        {
+                            <option value="@a.Id">@a.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" @bind="model.CategoryId">
+                        <option value="0">-- Select category --</option>
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c.Id">@c.CategoryName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary" type="submit" disabled="@saving">Create</button>
+                <a class="btn btn-outline-secondary" href="/admin/books">Cancel</a>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private Book model = new();
+    private bool saving;
+    private string? error;
+
+    private List<Author> authors = new();
+    private List<Category> categories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        authors = await Books.GetAuthorsAsync();
+        categories = await Books.GetCategoriesAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        saving = true;
+        error = null;
+
+        try
+        {
+            if (model.AuthorId <= 0) throw new Exception("Please select an author.");
+            if (model.CategoryId <= 0) throw new Exception("Please select a category.");
+
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var email = auth.User?.Identity?.Name;
+
+            await Books.CreateAsync(model, email);
+            Nav.NavigateTo("/admin/books");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

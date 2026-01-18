@@ -1,0 +1,52 @@
+﻿@page "/admin"
+
+<PageTitle>Dashboard</PageTitle>
+
+<div class="admin-header">
+    <h1>Dashboard</h1>
+    <p class="admin-subtitle">
+        Central control panel for orders, payments, and customer management.
+    </p>
+</div>
+
+<div class="admin-grid">
+    <div class="admin-card">
+        <div class="admin-card-top">
+            <h3>Orders</h3>
+            <p>Track status and inspect details.</p>
+        </div>
+        <a class="admin-card-btn primary" href="/admin/orders">Manage Orders</a>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-top">
+            <h3>Payments</h3>
+            <p>Verify transactions.</p>
+        </div>
+        <a class="admin-card-btn primary" href="/admin/payments">Manage Payments</a>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-top">
+            <h3>Customers</h3>
+            <p>View customer contact information.</p>
+        </div>
+        <a class="admin-card-btn secondary" href="/admin/customers">Manage Customers</a>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-top">
+            <h3>Order Items</h3>
+            <p>Audit line items and validate totals per order.</p>
+        </div>
+        <a class="admin-card-btn secondary" href="/admin/orderitems">View Order Items</a>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-top">
+            <h3>Catalog</h3>
+            <p>Manage books, authors, categories, and reviews in one place.</p>
+        </div>
+        <a class="admin-card-btn outline" href="/admin/catalog">Open Catalog</a>
+    </div>
+</div>

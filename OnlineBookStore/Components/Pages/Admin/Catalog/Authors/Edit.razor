@@ -1,0 +1,101 @@
+﻿@page "/admin/authors/edit"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject AdminAuthorService Authors
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>Edit Author</PageTitle>
+
+<h1 class="mb-1">Edit Author</h1>
+<div class="text-muted mb-3">Update author name or bio.</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (model == null)
+{
+    <div class="alert alert-warning">Author not found.</div>
+    <a class="btn btn-outline-secondary" href="/admin/authors">Back</a>
+}
+else
+{
+    <EditForm Model="model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Name</label>
+                        <InputText class="form-control" @bind-Value="model.Name" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Bio</label>
+                        <InputTextArea class="form-control" @bind-Value="model.Bio" rows="4" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-primary" type="submit" disabled="@saving">Save</button>
+                    <a class="btn btn-outline-secondary" href="/admin/authors">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [SupplyParameterFromQuery] public int id { get; set; }
+
+    private bool loading = true;
+    private bool saving;
+    private string? error;
+
+    private Author? model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = await Authors.GetAuthorAsync(id);
+        loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        saving = true;
+        error = null;
+
+        try
+        {
+            if (model == null) throw new Exception("Author not found.");
+            if (string.IsNullOrWhiteSpace(model.Name)) throw new Exception("Author name is required.");
+
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var email = auth.User?.Identity?.Name;
+
+            await Authors.UpdateAsync(model, email);
+            Nav.NavigateTo("/admin/authors");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

@@ -1,0 +1,152 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Routing
+@using OnlineBookStore.Data
+
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IServiceScopeFactory ScopeFactory
+
+@implements IDisposable
+
+<nav class="np-nav">
+    
+    <a class="np-brand" href="/">
+        <span class="np-brand-dot"></span>
+        NextPage
+    </a>
+
+    
+    <div class="np-nav-links">
+        @if (!isAdmin)
+        {
+            <NavLink class="np-link" href="/" Match="NavLinkMatch.All">Home</NavLink>
+            <NavLink class="np-link" href="/store/books">Books</NavLink>
+            <NavLink class="np-link" href="/store/categories">Categories</NavLink>
+            <NavLink class="np-link" href="/store/authors">Authors</NavLink>
+        }
+        else
+        {
+            @if (!IsAccountPage && !IsHomePage)
+            {
+                <NavLink class="np-link" href="/store/books">Books</NavLink>
+                <NavLink class="np-link" href="/store/categories">Categories</NavLink>
+                <NavLink class="np-link" href="/store/authors">Authors</NavLink>
+            }
+        }
+    </div>
+
+    
+    <div class="np-nav-actions">
+        <AuthorizeView Context="auth">
+            <Authorized>
+                @if (auth.User.IsInRole("Administrator"))
+                {
+                    <NavLink class="np-link" href="/" Match="NavLinkMatch.All">Home</NavLink>
+
+                    @if (!IsHomePage)
+                    {
+                        <NavLink class="np-link" href="/admin">Dashboard</NavLink>
+                    }
+                }
+
+                
+                @if (auth.User.IsInRole("User"))
+                {
+                    <NavLink class="np-link" href="/store/cart">Cart</NavLink>
+                    <NavLink class="np-link" href="/store/myorders">Orders</NavLink>
+                }
+
+                <NavLink class="np-link np-account" href="/Account/Manage">
+                    @displayName
+                </NavLink>
+
+                <form class="np-logout" action="/Account/Logout" method="post">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="/" />
+                    <button type="submit" class="np-btn np-btn-outline">Logout</button>
+                </form>
+            </Authorized>
+
+            <NotAuthorized>
+                <NavLink class="np-link" href="/Account/Login">Login</NavLink>
+                <NavLink class="np-btn np-btn-primary" href="/Account/Register">Register</NavLink>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</nav>
+
+@code {
+    private string displayName = "Account";
+    private bool isAdmin = false;
+
+    private bool IsHomePage => string.IsNullOrWhiteSpace(Nav.ToBaseRelativePath(Nav.Uri));
+
+    private bool IsAccountPage
+    {
+        get
+        {
+            var path = (Nav.ToBaseRelativePath(Nav.Uri) ?? "").Trim();
+            return path.StartsWith("Account/", StringComparison.OrdinalIgnoreCase)
+                   || path.Equals("Account", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private EventHandler<LocationChangedEventArgs>? _locationChangedHandler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDisplayNameAsync();
+
+        _locationChangedHandler = (_, __) => InvokeAsync(StateHasChanged);
+        Nav.LocationChanged += _locationChangedHandler;
+    }
+
+    private async Task LoadDisplayNameAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var principal = authState.User;
+
+            isAdmin = principal?.IsInRole("Administrator") == true;
+
+            if (principal?.Identity?.IsAuthenticated != true)
+            {
+                displayName = "Account";
+                return;
+            }
+
+            using var scope = ScopeFactory.CreateScope();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<OnlineBookStoreUser>>();
+
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null)
+            {
+                displayName = "Account";
+                return;
+            }
+
+            var first = (user.FirstName ?? "").Trim();
+            var email = (user.Email ?? "").Trim();
+
+            if (!string.IsNullOrWhiteSpace(first))
+                displayName = first;
+            else if (!string.IsNullOrWhiteSpace(email))
+                displayName = email;
+            else
+                displayName = "Account";
+        }
+        catch
+        {
+            displayName = "Account";
+            isAdmin = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_locationChangedHandler != null)
+            Nav.LocationChanged -= _locationChangedHandler;
+    }
+}

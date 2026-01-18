@@ -1,0 +1,187 @@
+﻿@page "/admin/customers/details"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminCustomerService AdminCustomers
+
+<PageTitle>Customer Details</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Customer #@Id</h1>
+        <div class="text-muted">Profile & Order History Overview</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/admin/customers">Back</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (customer is null)
+{
+    <div class="alert alert-warning">Customer not found.</div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header bg-white fw-semibold">Profile</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <div class="text-muted">Full Name</div>
+                        <div class="fw-semibold">@Safe(customer.FullName)</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="text-muted">Email</div>
+                        <div class="fw-semibold">@Safe(customer.Email)</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="text-muted">Phone</div>
+                        <div class="fw-semibold">@Safe(customer.Phone)</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="text-muted">Address</div>
+                        <div class="fw-semibold">@Safe(customer.Address)</div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(customer.UserId))
+                    {
+                        <div class="mb-0">
+                            <div class="text-muted">UserId</div>
+                            <div class="fw-semibold">@customer.UserId</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="text-muted">Total Orders</div>
+                        <div class="fw-semibold">@((customer.Orders?.Count ?? 0).ToString())</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header bg-white fw-semibold">Orders</div>
+                <div class="card-body p-0">
+                    @if (customer.Orders is null || customer.Orders.Count == 0)
+                    {
+                        <div class="p-3 text-muted">No orders found.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle">
+                                <thead>
+                                    <tr>
+                                        <th style="width:90px">Order #</th>
+                                        <th style="width:180px">Date</th>
+                                        <th style="width:160px">Status</th>
+                                        <th style="width:140px" class="text-end">Total</th>
+                                        <th style="width:220px">Payment</th>
+                                        <th style="width:110px" class="text-end">Order</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var o in customer.Orders.OrderByDescending(x => x.OrderDate))
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">@o.Id</td>
+                                            <td>@o.OrderDate.ToString("dd MMM yyyy")</td>
+
+                                            @*  Plain text (no badge) *@
+                                            <td>@GetOrderStatusText(o)</td>
+
+                                            <td class="text-end fw-semibold">$@o.TotalAmount.ToString("0.00")</td>
+
+                                            @*  Plain text (no badge) *@
+                                            <td>@GetPaymentText(o)</td>
+
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-primary" href="/admin/orders/details?id=@o.Id">Open</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+    private Customer? customer;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            customer = await AdminCustomers.GetCustomerDetailsAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private static string Safe(string? s)
+        => string.IsNullOrWhiteSpace(s) ? "-" : s.Trim();
+
+    
+    private static string GetOrderStatusText(Orders o)
+    {
+        var s1 = (o.Status ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(s1)) return s1;
+
+        var s2 = (o.Payment?.PaymentStatus ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(s2)) return s2;
+
+        return "-";
+    }
+
+    
+    private static string GetPaymentText(Orders o)
+    {
+        if (o.Payment is null) return "-";
+
+        var ps = (o.Payment.PaymentStatus ?? "").Trim();
+        var pm = (o.Payment.PaymentMethod ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(ps) && string.IsNullOrWhiteSpace(pm)) return "-";
+        if (!string.IsNullOrWhiteSpace(ps) && !string.IsNullOrWhiteSpace(pm)) return $"{ps} ({pm})";
+        if (!string.IsNullOrWhiteSpace(ps)) return ps;
+
+        return pm;
+    }
+}

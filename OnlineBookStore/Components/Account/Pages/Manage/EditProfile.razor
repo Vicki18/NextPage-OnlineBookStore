@@ -1,0 +1,181 @@
+﻿@page "/Account/Manage/EditProfile"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using OnlineBookStore.Data
+
+@inject UserManager<OnlineBookStoreUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>Edit personal information</PageTitle>
+
+<div class="ob-account">
+    <div class="ob-account__header">
+        <h2 class="ob-account__title">Edit personal information</h2>
+
+        @* REMOVE for Admin only *@
+        @if (!isAdmin)
+        {
+            <p class="ob-account__subtitle">Update your name, phone number, and delivery address.</p>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        var cls = statusMessage.StartsWith("Error") ? "alert-danger" : "alert-success";
+        <div class="alert @cls" role="alert">@statusMessage</div>
+    }
+
+    <div class="ob-card">
+        <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="ob-grid">
+                <div class="ob-field ob-field--full">
+                    <label>Email</label>
+                    <input class="form-control" value="@email" disabled />
+                </div>
+
+                <div class="ob-field">
+                    <label>First Name</label>
+                    <InputText class="form-control" @bind-Value="Input.FirstName" />
+                    <ValidationMessage For="() => Input.FirstName" class="text-danger" />
+                </div>
+
+                <div class="ob-field">
+                    <label>Last Name</label>
+                    <InputText class="form-control" @bind-Value="Input.LastName" />
+                    <ValidationMessage For="() => Input.LastName" class="text-danger" />
+                </div>
+
+                <div class="ob-field ob-field--full">
+                    <label>Phone Number</label>
+                    <InputText class="form-control" @bind-Value="Input.PhoneNumber" />
+                    <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+                </div>
+
+                <div class="ob-field ob-field--full">
+                    <label>Address</label>
+                    <InputTextArea class="form-control" rows="3" @bind-Value="Input.Address" />
+                    <ValidationMessage For="() => Input.Address" class="text-danger" />
+                </div>
+            </div>
+
+            <div class="ob-actions">
+                <button type="submit" class="btn btn-primary ob-save" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : "Save changes")
+                </button>
+
+                <a class="ob-cancel" href="/Account/Manage">Cancel</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private OnlineBookStoreUser? user;
+    private string email = "";
+    private string? currentPhone;
+
+    private bool isSaving = false;
+    private string statusMessage = "";
+
+    private bool isAdmin = false;
+
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            Nav.NavigateTo("/Account/Login", forceLoad: true);
+            return;
+        }
+
+        isAdmin = principal.IsInRole("Administrator");
+
+        user = await UserManager.GetUserAsync(principal);
+        if (user is null)
+        {
+            Nav.NavigateTo("/Account/Login", forceLoad: true);
+            return;
+        }
+
+        email = user.Email ?? "";
+        currentPhone = user.PhoneNumber;
+
+        Input.FirstName = user.FirstName ?? "";
+        Input.LastName = user.LastName ?? "";
+        Input.PhoneNumber = currentPhone ?? "";
+        Input.Address = user.Address ?? "";
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (user is null) return;
+
+        statusMessage = "";
+        isSaving = true;
+
+        try
+        {
+            user.FirstName = (Input.FirstName ?? "").Trim();
+            user.LastName = (Input.LastName ?? "").Trim();
+            user.Address = (Input.Address ?? "").Trim();
+
+            var updateResult = await UserManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                statusMessage = "Error: Failed to update profile details.";
+                return;
+            }
+
+            var newPhone = (Input.PhoneNumber ?? "").Trim();
+            if (newPhone != (currentPhone ?? ""))
+            {
+                var phoneResult = await UserManager.SetPhoneNumberAsync(user, newPhone);
+                if (!phoneResult.Succeeded)
+                {
+                    statusMessage = "Error: Failed to update phone number.";
+                    return;
+                }
+                currentPhone = newPhone;
+            }
+
+            Nav.NavigateTo("/Account/Manage", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            statusMessage = "Error: " + ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "First name is required.")]
+        [StringLength(50)]
+        public string? FirstName { get; set; }
+
+        [Required(ErrorMessage = "Last name is required.")]
+        [StringLength(50)]
+        public string? LastName { get; set; }
+
+        [Required(ErrorMessage = "Phone number is required.")]
+        public string? PhoneNumber { get; set; }
+
+        [Required(ErrorMessage = "Address is required.")]
+        [StringLength(200)]
+        public string? Address { get; set; }
+    }
+}

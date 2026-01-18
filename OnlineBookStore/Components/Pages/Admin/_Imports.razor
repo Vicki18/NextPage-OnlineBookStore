@@ -1,0 +1,8 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStore.Data
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@attribute [Authorize(Roles = "Administrator")]
+@layout OnlineBookStore.Components.Layout.AdminLayout

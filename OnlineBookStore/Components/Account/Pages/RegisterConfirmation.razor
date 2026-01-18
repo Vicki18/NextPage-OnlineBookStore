@@ -1,0 +1,110 @@
+﻿@page "/Account/RegisterConfirmation"
+
+@using System.Text
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using OnlineBookStore.Data
+
+@inject UserManager<OnlineBookStoreUser> UserManager
+@inject IEmailSender<OnlineBookStoreUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register Confirmation</PageTitle>
+
+<div class="np-auth">
+    <div class="np-auth-header">
+        <h1 class="np-auth-h1">Almost there 🎉</h1>
+        <p class="np-auth-subtitle">Confirm your email to activate your NextPage account.</p>
+    </div>
+
+    <section class="np-auth-card">
+        <StatusMessage Message="@statusMessage" />
+
+        @if (!string.IsNullOrWhiteSpace(errorText))
+        {
+            <div class="text-danger np-auth-validation" role="alert">@errorText</div>
+        }
+
+        @if (emailConfirmationLink is not null)
+        {
+            <div class="np-auth-title">Confirm your account</div>
+            <div class="np-auth-divider"></div>
+
+            <p class="np-auth-body">
+                Email sending is not configured yet (common for school projects). Normally, the confirmation link would be sent to your email.
+            </p>
+
+            <a class="btn btn-primary btn-lg w-100 np-auth-submit" href="@emailConfirmationLink">
+                Confirm Email
+            </a>
+
+            <div class="np-auth-links">
+                <a class="np-auth-link" href="Account/Login">Back to Log in</a>
+            </div>
+        }
+        else
+        {
+            <div class="np-auth-title">Check your inbox</div>
+            <div class="np-auth-divider"></div>
+
+            <p class="np-auth-body">
+                If email sending is enabled, we’ve sent a confirmation link to your email.
+                Please confirm to continue.
+            </p>
+
+            <div class="np-auth-links">
+                <a class="np-auth-link" href="Account/Login">Back to Log in</a>
+                <a class="np-auth-link" href="Account/Register">Register again</a>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private string? emailConfirmationLink;
+    private string? statusMessage;
+    private string? errorText;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? Email { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Email))
+        {
+            RedirectManager.RedirectTo("");
+            return;
+        }
+
+        var user = await UserManager.FindByEmailAsync(Email);
+        if (user is null)
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            errorText = "We couldn’t find an account for that email.";
+            return;
+        }
+
+        // When no real email sender is configured, show a direct confirmation link (dev/school projects)
+        if (EmailSender is IdentityNoOpEmailSender)
+        {
+            var userId = await UserManager.GetUserIdAsync(user);
+            var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+            emailConfirmationLink = NavigationManager.GetUriWithQueryParameters(
+                NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+                new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+        }
+        else
+        {
+            statusMessage = "Please check your email to confirm your account.";
+        }
+    }
+}

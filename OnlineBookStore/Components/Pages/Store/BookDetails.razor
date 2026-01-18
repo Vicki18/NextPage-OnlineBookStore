@@ -1,0 +1,383 @@
+﻿@page "/store/book/{Id:int}"
+@rendermode InteractiveServer
+
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineBookStore.Data
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject IDbContextFactory<OnlineBookStoreContext> DbFactory
+@inject CartService Cart
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject CustomerService CustomerService
+
+<PageTitle>Book Details</PageTitle>
+
+@if (book == null)
+{
+    <p class="text-muted">Loading...</p>
+}
+else
+{
+    
+    <div class="row g-4">
+        <div class="col-md-4">
+            @if (!string.IsNullOrWhiteSpace(book.CoverImageUrl))
+            {
+                <img src="@book.CoverImageUrl" class="img-fluid rounded border" alt="cover" />
+            }
+            else
+            {
+                <div class="d-flex align-items-center justify-content-center bg-secondary-subtle rounded border"
+                     style="height:320px;">
+                    <span class="text-muted">No Cover</span>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-8">
+            <h2>@book.Title</h2>
+
+            <p class="text-muted mb-1">
+                Author:
+                <a href="/store/author/@book.AuthorId">@((book.Author?.Name ?? "Unknown"))</a>
+            </p>
+
+            <p class="text-muted mb-3">
+                Category:
+                <a href="/store/category/@book.CategoryId">@((book.Category?.CategoryName ?? "Unknown"))</a>
+            </p>
+
+            <div class="fs-4 fw-bold mb-3">$@book.Price</div>
+
+            @if (!string.IsNullOrWhiteSpace(book.Description))
+            {
+                <p>@book.Description</p>
+            }
+
+            <div class="d-flex gap-2 mt-3">
+                <input type="number" class="form-control" style="width:100px;"
+                       min="1" @bind="qty" />
+
+                <button class="btn btn-primary"
+                        disabled="@(book.StockQty <= 0)"
+                        @onclick="AddToCartAsync">
+                    @(book.StockQty <= 0 ? "Out of Stock" : "Add to Cart")
+                </button>
+
+                <button class="btn btn-outline-secondary" @onclick="Back">
+                    Back
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <div class="alert alert-success mt-3">@message</div>
+            }
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+   
+    <div class="row g-4">
+        
+        <div class="col-lg-5">
+            <h4>Your Review</h4>
+
+            @if (!isUserLoggedIn)
+            {
+                <div class="alert alert-info">
+                    Please <a href="@loginUrl">login</a> to write a review.
+                </div>
+            }
+            else if (!canReview)
+            {
+                <div class="alert alert-warning">
+                    You can review this book after you have purchased it.
+                </div>
+            }
+            else
+            {
+                @if (!string.IsNullOrWhiteSpace(reviewOk))
+                {
+                    <div class="alert alert-success">@reviewOk</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(reviewError))
+                {
+                    <div class="alert alert-danger">@reviewError</div>
+                }
+
+                <div class="card">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Rating (1–5)</label>
+                            <InputNumber class="form-control" @bind-Value="myRating" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Comment</label>
+                            <InputTextArea class="form-control" rows="4" @bind-Value="myComment" />
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary"
+                                    @onclick="SaveMyReviewAsync"
+                                    disabled="@savingReview">
+                                @(myReviewId == 0 ? "Submit Review" : "Update Review")
+                            </button>
+
+                            @if (myReviewId != 0)
+                            {
+                                <button class="btn btn-outline-danger"
+                                        @onclick="DeleteMyReviewAsync"
+                                        disabled="@savingReview">
+                                    Delete
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        
+        <div class="col-lg-7">
+            <h4>All Reviews (@reviews.Count)</h4>
+
+            @if (reviews.Count == 0)
+            {
+                <p class="text-muted">No reviews yet.</p>
+            }
+            else
+            {
+                @foreach (var r in reviews.OrderByDescending(x => x.DateCreated))
+                {
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-semibold">@((r.Customer?.FullName ?? "Customer"))</div>
+                                    <div class="text-muted small">@r.DateCreated.ToString("dd MMM yyyy, HH:mm")</div>
+                                </div>
+
+                                <span class="badge bg-primary fs-6">@r.Rating / 5</span>
+                            </div>
+
+                            <div class="mt-2">
+                                @(string.IsNullOrWhiteSpace(r.Comment) ? "(No comment)" : r.Comment)
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Book? book;
+    private int qty = 1;
+    private string message = "";
+
+    private List<Review> reviews = new();
+
+    private bool isUserLoggedIn;
+    private string loginUrl = "/Account/Login";
+
+    private int myCustomerId;
+    private bool canReview;
+
+    private int myReviewId;
+    private int myRating = 5;
+    private string? myComment;
+
+    private bool savingReview;
+    private string? reviewError;
+    private string? reviewOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        book = await db.Book
+            .Include(b => b.Author)
+            .Include(b => b.Category)
+            .FirstOrDefaultAsync(b => b.Id == Id);
+
+        await RefreshReviewsAsync();
+        await RefreshUserReviewStateAsync();
+    }
+
+    private async Task RefreshReviewsAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        reviews = await db.Review
+            .Include(r => r.Customer)
+            .Where(r => r.BookId == Id)
+            .OrderByDescending(r => r.DateCreated)
+            .ToListAsync();
+    }
+
+    private async Task RefreshUserReviewStateAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        isUserLoggedIn = principal?.Identity?.IsAuthenticated == true && principal.IsInRole("User");
+
+        if (!isUserLoggedIn)
+        {
+            loginUrl = $"Account/Login?ReturnUrl={Uri.EscapeDataString(Nav.Uri)}";
+            return;
+        }
+
+        
+        var customer = await CustomerService.GetOrCreateCustomerForCurrentUserAsync(principal);
+        myCustomerId = customer.Id;
+
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        
+        canReview = await db.Orders
+            .Include(o => o.Payment)
+            .Include(o => o.OrderItems)
+            .AnyAsync(o =>
+                o.CustomerId == myCustomerId &&
+                o.Payment != null &&
+                (o.Payment.PaymentStatus ?? "") == "Paid" &&
+                o.OrderItems!.Any(oi => oi.BookId == Id));
+
+        
+        var mine = await db.Review
+            .FirstOrDefaultAsync(r => r.BookId == Id && r.CustomerId == myCustomerId);
+
+        if (mine != null)
+        {
+            myReviewId = mine.Id;
+            myRating = mine.Rating;
+            myComment = mine.Comment;
+        }
+        else
+        {
+            myReviewId = 0;
+            myRating = 5;
+            myComment = "";
+        }
+    }
+
+    private async Task AddToCartAsync()
+    {
+        if (book == null) return;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User?.Identity?.IsAuthenticated != true)
+        {
+            Nav.NavigateTo($"Account/Login?ReturnUrl={Uri.EscapeDataString(Nav.Uri)}");
+            return;
+        }
+
+        Cart.Add(book, qty < 1 ? 1 : qty);
+        message = "Added to cart.";
+    }
+
+    private void Back() => Nav.NavigateTo("/store/books");
+
+    private async Task SaveMyReviewAsync()
+    {
+        reviewError = reviewOk = null;
+
+        if (myRating < 1 || myRating > 5)
+        {
+            reviewError = "Rating must be between 1 and 5.";
+            return;
+        }
+
+        savingReview = true;
+
+        try
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+
+            if (myReviewId == 0)
+            {
+                var r = new Review
+                {
+                    BookId = Id,
+                    CustomerId = myCustomerId,
+                    Rating = myRating,
+                    Comment = myComment?.Trim(),
+                    DateCreated = DateTime.Now
+                };
+
+                db.Review.Add(r);
+                await db.SaveChangesAsync();
+
+                
+                myReviewId = r.Id;
+                reviewOk = "Review submitted.";
+            }
+            else
+            {
+                var r = await db.Review
+                    .FirstAsync(x => x.Id == myReviewId && x.CustomerId == myCustomerId);
+
+                r.Rating = myRating;
+                r.Comment = myComment?.Trim();
+                r.DateUpdated = DateTime.Now;
+
+                await db.SaveChangesAsync();
+                reviewOk = "Review updated.";
+            }
+
+            await RefreshReviewsAsync();
+            await RefreshUserReviewStateAsync(); 
+        }
+        catch (Exception ex)
+        {
+            reviewError = ex.Message;
+        }
+        finally
+        {
+            savingReview = false;
+        }
+    }
+
+    private async Task DeleteMyReviewAsync()
+    {
+        savingReview = true;
+        reviewError = reviewOk = null;
+
+        try
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+
+            var r = await db.Review
+                .FirstAsync(x => x.Id == myReviewId && x.CustomerId == myCustomerId);
+
+            db.Review.Remove(r);
+            await db.SaveChangesAsync();
+
+            
+            myReviewId = 0;
+            myRating = 5;
+            myComment = "";
+            reviewOk = "Review deleted.";
+
+            await RefreshReviewsAsync();
+            await RefreshUserReviewStateAsync();
+        }
+        catch (Exception ex)
+        {
+            reviewError = ex.Message;
+        }
+        finally
+        {
+            savingReview = false;
+        }
+    }
+}

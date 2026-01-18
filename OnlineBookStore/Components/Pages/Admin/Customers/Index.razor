@@ -1,0 +1,176 @@
+﻿@page "/admin/customers"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminCustomerService AdminCustomers
+
+<PageTitle>Customers</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Customers</h1>
+        <div class="text-muted">Search and manage customer profiles.</div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            
+            <div class="col-md-6">
+                <label class="form-label">Search</label>
+                <input class="form-control"
+                       placeholder="Name / Email / Phone / Address / UserId"
+                       @bind="search" @bind:event="oninput" />
+            </div>
+
+            
+            <div class="col-md-3">
+                <label class="form-label">Sort by</label>
+                <select class="form-select" @bind="sortBy">
+                    <option value="name_asc">Customer (A → Z)</option>
+                    <option value="name_desc">Customer (Z → A)</option>
+                    <option value="orders_desc">Orders (High → Low)</option>
+                    <option value="orders_asc">Orders (Low → High)</option>
+                    <option value="id_desc">ID (High → Low)</option>
+                    <option value="id_asc">ID (Low → High)</option>
+                </select>
+            </div>
+
+            
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-primary flex-fill" @onclick="ReloadAsync" disabled="@loading">
+                    Search
+                </button>
+
+               
+                <button class="btn btn-outline-secondary" @onclick="ClearAsync" disabled="@loading">
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (customers.Count == 0)
+{
+    <p class="text-muted">No customers found.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:90px">ID</th>
+                    <th>Customer</th>
+                    <th style="width:220px">Contact</th>
+                    <th style="width:120px" class="text-end">Orders</th>
+                    <th style="width:140px" class="text-end">Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in customers)
+                {
+                    <tr>
+                        <td class="fw-semibold">@c.Id</td>
+                        <td>
+                            <div class="fw-semibold">@Safe(c.FullName)</div>
+                            <div class="text-muted small">@Safe(c.Email)</div>
+                            @if (!string.IsNullOrWhiteSpace(c.UserId))
+                            {
+                                <div class="text-muted small">UserId: @c.UserId</div>
+                            }
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@Safe(c.Phone)</div>
+                            <div class="text-muted small">@Safe(c.Address)</div>
+                        </td>
+                        <td class="text-end fw-semibold">@OrdersCount(c)</td>
+
+                        
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/customers/details?id=@c.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+
+    private string search = "";
+    private string sortBy = "name_asc";
+    private List<Customer> customers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            var list = await AdminCustomers.GetCustomersAsync(search, take: 300);
+            customers = ApplySort(list ?? new List<Customer>());
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            customers = new();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    
+    private async Task ClearAsync()
+    {
+        search = "";
+        sortBy = "name_asc";
+
+        
+        await InvokeAsync(StateHasChanged);
+
+        await ReloadAsync();
+    }
+
+    private List<Customer> ApplySort(List<Customer> list)
+    {
+        return sortBy switch
+        {
+            "name_desc" => list.OrderByDescending(c => (c.FullName ?? "").Trim()).ThenByDescending(c => c.Id).ToList(),
+            "orders_desc" => list.OrderByDescending(c => OrdersCountInt(c)).ThenBy(c => (c.FullName ?? "").Trim()).ToList(),
+            "orders_asc" => list.OrderBy(c => OrdersCountInt(c)).ThenBy(c => (c.FullName ?? "").Trim()).ToList(),
+            "id_desc" => list.OrderByDescending(c => c.Id).ToList(),
+            "id_asc" => list.OrderBy(c => c.Id).ToList(),
+            _ => list.OrderBy(c => (c.FullName ?? "").Trim()).ThenBy(c => c.Id).ToList(),
+        };
+    }
+
+    private static int OrdersCountInt(Customer c) => c.Orders?.Count ?? 0;
+    private static string OrdersCount(Customer c) => OrdersCountInt(c).ToString();
+
+    private static string Safe(string? s)
+        => string.IsNullOrWhiteSpace(s) ? "-" : s;
+}

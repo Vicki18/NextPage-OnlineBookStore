@@ -1,0 +1,135 @@
+﻿@page "/store/myorders"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineBookStore.Services
+@using OnlineBookStore.Domain
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject CustomerService CustomerSvc
+@inject OrderService OrderSvc
+
+<PageTitle>Order History</PageTitle>
+
+@if (blockingAdmin)
+{
+    <p class="text-muted">Redirecting...</p>
+}
+else
+{
+    <h2 class="mb-3">My Orders</h2>
+
+    @if (!loaded)
+    {
+        <p class="text-muted">Loading...</p>
+    }
+    else if (orders.Count == 0)
+    {
+        <p class="text-muted">You have no orders yet.</p>
+        <a class="btn btn-primary" href="/store/books">Browse Books</a>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var o in orders)
+            {
+                bool isOpen = (expandedOrderId == o.Id);
+
+                <div class="list-group-item">
+                    <button class="btn btn-link text-decoration-none w-100 p-0"
+                            @onclick="() => Toggle(o.Id)">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="fw-semibold">
+                                Order #@o.Id — @o.OrderDate.ToString("dd MMM yyyy")
+                            </div>
+
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="fw-bold">$@o.TotalAmount</span>
+                                <span class="fs-5">@((isOpen) ? "▴" : "▾")</span>
+                            </div>
+                        </div>
+                    </button>
+
+                    @if (isOpen)
+                    {
+                        <div class="mt-3">
+                            <div class="mb-2">
+                                <span class="badge bg-secondary">Status: @((o.Status ?? "Unknown"))</span>
+
+                                @if (o.Payment != null)
+                                {
+                                    <span class="badge bg-success ms-2">
+                                        Payment: @((o.Payment.PaymentStatus ?? "Unknown")) (@(o.Payment.PaymentMethod ?? "-"))
+                                    </span>
+                                }
+                            </div>
+
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Book</th>
+                                        <th style="width:90px;">Qty</th>
+                                        <th style="width:120px;">Unit Price</th>
+                                        <th style="width:120px;">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in o.OrderItems ?? new List<OrderItem>())
+                                    {
+                                        <tr>
+                                            <td>@(item.Book?.Title ?? $"Book #{item.BookId}")</td>
+                                            <td>@item.Quantity</td>
+                                            <td>$@item.UnitPrice</td>
+                                            <td>$@item.LineTotal</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool loaded = false;
+    private bool blockingAdmin = false;
+
+    private List<Orders> orders = new();
+    private int? expandedOrderId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = state.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            loaded = true;
+            return;
+        }
+
+        
+        if (principal.IsInRole("Administrator"))
+        {
+            blockingAdmin = true;
+            Nav.NavigateTo("/admin", true);
+            return;
+        }
+
+        var customer = await CustomerSvc.GetOrCreateCustomerForCurrentUserAsync(principal);
+        orders = await OrderSvc.GetOrdersForCustomerAsync(customer.Id);
+
+        loaded = true;
+    }
+
+    private void Toggle(int orderId)
+    {
+        expandedOrderId = (expandedOrderId == orderId) ? null : orderId;
+    }
+}

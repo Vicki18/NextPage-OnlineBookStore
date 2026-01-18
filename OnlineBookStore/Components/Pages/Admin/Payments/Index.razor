@@ -1,0 +1,243 @@
+﻿@page "/admin/payments"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminPaymentService AdminPayments
+
+<PageTitle>Payments</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Payments</h1>
+        <div class="text-muted">Search and review payment records</div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-7">
+                <label class="form-label">Search</label>
+                <input class="form-control"
+                       placeholder="Order ID / Customer / Method / Status"
+                       @bind="search" @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Sort by</label>
+                <!-- IMPORTANT: @bind already uses onchange, so use bind:after -->
+                <select class="form-select" @bind="sort" @bind:after="OnSortChanged">
+                    @foreach (var opt in sortOptions)
+                    {
+                        <option value="@opt.Value">@opt.Label</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary flex-fill" @onclick="ReloadAsync" disabled="@loading">Filter</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAsync" disabled="@loading">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (payments.Count == 0)
+{
+    <p class="text-muted">No payments found.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:90px">ID</th>
+                    <th style="width:90px">Order</th>
+                    <th>Customer</th>
+                    <th style="width:170px">Method</th>
+                    <th style="width:140px">Status</th>
+                    <th style="width:140px" class="text-end">Amount</th>
+                    <th style="width:170px" class="text-end">Date Paid</th>
+                    <th style="width:120px" class="text-end">Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in payments)
+                {
+                    <tr>
+                        <td class="fw-semibold">@p.Id</td>
+
+                        <td>
+                            <a href="/admin/orders/details?id=@p.OrderId">@p.OrderId</a>
+                        </td>
+
+                        <td>
+                            <div class="fw-semibold">@Safe(p.Order?.Customer?.FullName)</div>
+                            <div class="text-muted small">@Safe(p.Order?.Customer?.Email)</div>
+                        </td>
+
+                        <td>@Safe(p.PaymentMethod)</td>
+
+                        <!-- ✅ Plain text (no badge, no CSS class dependency) -->
+                        <td>@SafeStatus(p.PaymentStatus)</td>
+
+                        <td class="text-end fw-semibold">$@p.Amount.ToString("0.00")</td>
+
+                        <td class="text-end">
+                            @((p.DatePaid.HasValue) ? p.DatePaid.Value.ToString("dd MMM yyyy") : "-")
+                        </td>
+
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/payments/details?id=@p.Id">View</a>
+                            <!-- ✅ Edit removed -->
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+
+    private string search = "";
+
+    // Sorting
+    private const string DefaultSort = "date_desc";
+    private string sort = DefaultSort;
+
+    private readonly List<(string Value, string Label)> sortOptions = new()
+    {
+        ("date_desc",     "Date Paid (Newest)"),
+        ("date_asc",      "Date Paid (Oldest)"),
+        ("id_desc",       "Payment ID (High → Low)"),
+        ("id_asc",        "Payment ID (Low → High)"),
+        ("order_desc",    "Order ID (High → Low)"),
+        ("order_asc",     "Order ID (Low → High)"),
+        ("customer_asc",  "Customer Name (A → Z)"),
+        ("customer_desc", "Customer Name (Z → A)")
+    };
+
+    
+    private List<Payment> rawPayments = new();
+    private List<Payment> payments = new();
+
+    
+    private List<Payment>? allPaymentsCache;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            
+            rawPayments = await AdminPayments.GetPaymentsAsync(search, status: null, take: 400);
+
+            
+            if (string.IsNullOrWhiteSpace(search))
+                allPaymentsCache = rawPayments.ToList();
+
+            ApplySortToView();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            rawPayments = new();
+            payments = new();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task OnSortChanged()
+    {
+        
+        ApplySortToView();
+        return Task.CompletedTask;
+    }
+
+    private Task ClearAsync()
+    {
+        
+        search = "";
+        sort = DefaultSort;
+
+        if (allPaymentsCache != null)
+        {
+            rawPayments = allPaymentsCache.ToList();
+            ApplySortToView();
+            return Task.CompletedTask;
+        }
+
+        return ReloadAsync();
+    }
+
+    private void ApplySortToView()
+    {
+        payments = sort switch
+        {
+            "id_asc" => rawPayments.OrderBy(p => p.Id).ToList(),
+            "id_desc" => rawPayments.OrderByDescending(p => p.Id).ToList(),
+
+            "order_asc" => rawPayments.OrderBy(p => p.OrderId).ThenByDescending(p => p.Id).ToList(),
+            "order_desc" => rawPayments.OrderByDescending(p => p.OrderId).ThenByDescending(p => p.Id).ToList(),
+
+            "customer_asc" => rawPayments
+                                .OrderBy(p => (p.Order?.Customer?.FullName ?? "").Trim())
+                                .ThenByDescending(p => p.Id)
+                                .ToList(),
+
+            "customer_desc" => rawPayments
+                                .OrderByDescending(p => (p.Order?.Customer?.FullName ?? "").Trim())
+                                .ThenByDescending(p => p.Id)
+                                .ToList(),
+
+            
+            "date_asc" => rawPayments
+                            .OrderByDescending(p => p.DatePaid.HasValue)
+                            .ThenBy(p => p.DatePaid)
+                            .ThenByDescending(p => p.Id)
+                            .ToList(),
+
+            "date_desc" => rawPayments
+                            .OrderByDescending(p => p.DatePaid.HasValue)
+                            .ThenByDescending(p => p.DatePaid)
+                            .ThenByDescending(p => p.Id)
+                            .ToList(),
+
+            _ => rawPayments
+                    .OrderByDescending(p => p.DatePaid.HasValue)
+                    .ThenByDescending(p => p.DatePaid)
+                    .ThenByDescending(p => p.Id)
+                    .ToList()
+        };
+    }
+
+    private static string Safe(string? s)
+        => string.IsNullOrWhiteSpace(s) ? "-" : s.Trim();
+
+    private static string SafeStatus(string? s)
+        => string.IsNullOrWhiteSpace(s) ? "-" : s.Trim();
+}

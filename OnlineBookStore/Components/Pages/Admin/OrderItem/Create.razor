@@ -1,0 +1,84 @@
+﻿@page "/orderitems/create"
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStore.Domain
+@inject IDbContextFactory<OnlineBookStore.Data.OnlineBookStoreContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create</PageTitle>
+
+<h1>Create</h1>
+
+<h2>OrderItem</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="OrderItem" OnValidSubmit="AddOrderItem" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <label for="quantity" class="form-label">Quantity:</label> 
+                <InputNumber id="quantity" @bind-Value="OrderItem.Quantity" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.Quantity" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="unitprice" class="form-label">UnitPrice:</label> 
+                <InputNumber id="unitprice" @bind-Value="OrderItem.UnitPrice" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.UnitPrice" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="linetotal" class="form-label">LineTotal:</label> 
+                <InputNumber id="linetotal" @bind-Value="OrderItem.LineTotal" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.LineTotal" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="orderid" class="form-label">OrderId:</label> 
+                <InputNumber id="orderid" @bind-Value="OrderItem.OrderId" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.OrderId" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="bookid" class="form-label">BookId:</label> 
+                <InputNumber id="bookid" @bind-Value="OrderItem.BookId" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.BookId" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="datecreated" class="form-label">DateCreated:</label> 
+                <InputDate id="datecreated" @bind-Value="OrderItem.DateCreated" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.DateCreated" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="dateupdated" class="form-label">DateUpdated:</label> 
+                <InputDate id="dateupdated" @bind-Value="OrderItem.DateUpdated" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.DateUpdated" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="createdby" class="form-label">CreatedBy:</label> 
+                <InputText id="createdby" @bind-Value="OrderItem.CreatedBy" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.CreatedBy" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="updatedby" class="form-label">UpdatedBy:</label> 
+                <InputText id="updatedby" @bind-Value="OrderItem.UpdatedBy" class="form-control" /> 
+                <ValidationMessage For="() => OrderItem.UpdatedBy" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/orderitems">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private OrderItem OrderItem { get; set; } = new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddOrderItem()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.OrderItem.Add(OrderItem);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/orderitems");
+    }
+}

@@ -1,0 +1,119 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using OnlineBookStore.Data
+
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IServiceScopeFactory ScopeFactory
+
+<PageTitle>NextPage Online Bookstore</PageTitle>
+
+<div class="np-hero">
+    <div class="np-hero-left">
+        <div class="np-badge">NextPage • Online Bookstore</div>
+
+        <h1 class="np-title">Find your next favorite book.</h1>
+
+        <p class="np-subtitle">
+            Explore curated titles across fiction, non-fiction, and education.
+            A clean, modern online bookstore experience.
+        </p>
+
+        <AuthorizeView>
+            <Authorized>
+                @if (isAdmin)
+                {
+                    <div class="np-welcome">
+                        Welcome, <span class="np-welcome-name">Admin</span> — manage your store here.
+                    </div>
+
+                    <div class="np-admin-actions">
+                        <button type="button" class="btn btn-primary btn-lg np-admin-dashboard-btn" @onclick="GoDashboard">
+                            Dashboard
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="np-welcome">
+                        Welcome, <span class="np-welcome-name">@displayName</span> — enjoy shopping!
+                    </div>
+
+                    <div class="np-hero-actions-row">
+                        <button type="button" class="btn btn-primary btn-lg" @onclick="GoBrowse">Shop Now</button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" @onclick="GoCart">View Cart</button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" @onclick="GoOrders">My Orders</button>
+                    </div>
+                }
+            </Authorized>
+
+            <NotAuthorized>
+                <div class="np-hero-cta">
+                    <button type="button" class="btn btn-primary btn-hero" @onclick="GoBrowse">
+                        Browse Books
+                    </button>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+
+    <div class="np-hero-right" role="img" aria-label="Bookstore banner image"></div>
+</div>
+
+<div class="np-features">
+    <div class="np-feature">
+        <div class="np-feature-title">Curated Catalog</div>
+        <div class="np-feature-text">Browse by category, search by title or author, and sort by price.</div>
+    </div>
+
+    <div class="np-feature">
+        <div class="np-feature-title">Simple Checkout</div>
+        <div class="np-feature-text">Add items to cart and simulate payment with a clean flow.</div>
+    </div>
+
+    <div class="np-feature">
+        <div class="np-feature-title">Account + Orders</div>
+        <div class="np-feature-text">Register or log in anytime to manage your cart and view order history.</div>
+    </div>
+</div>
+
+@code {
+    private string displayName = "Customer";
+    private bool isAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var principal = auth.User;
+
+            if (principal?.Identity?.IsAuthenticated != true)
+                return;
+
+            isAdmin = principal.IsInRole("Administrator");
+
+            using var scope = ScopeFactory.CreateScope();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<OnlineBookStoreUser>>();
+
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null) return;
+
+            var first = (user.FirstName ?? "").Trim();
+            displayName = string.IsNullOrWhiteSpace(first) ? "Customer" : first;
+        }
+        catch
+        {
+            displayName = "Customer";
+            isAdmin = false;
+        }
+    }
+
+    private void GoBrowse() => Nav.NavigateTo("/store/books");
+    private void GoCart() => Nav.NavigateTo("/store/cart");
+    private void GoOrders() => Nav.NavigateTo("/store/myorders");
+    private void GoDashboard() => Nav.NavigateTo("/admin");
+}

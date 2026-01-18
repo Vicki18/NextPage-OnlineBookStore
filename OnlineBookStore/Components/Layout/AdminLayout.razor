@@ -1,0 +1,113 @@
+﻿@inherits LayoutComponentBase
+
+<div class="admin-app">
+    <aside class="admin-sidebar">
+        <a class="admin-brand" href="/">
+            <span class="admin-brand-dot"></span>
+            <span class="admin-brand-text">NextPage</span>
+        </a>
+
+        <div class="admin-section">Admin</div>
+
+        <nav class="admin-nav">
+            <NavLink class="admin-link" href="/admin" Match="NavLinkMatch.All">
+                <span class="admin-link-row">
+                    <span class="admin-ico">🏠</span>
+                    <span class="admin-label">Dashboard</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/orders">
+                <span class="admin-link-row">
+                    <span class="admin-ico">🧾</span>
+                    <span class="admin-label">Orders</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/orderitems">
+                <span class="admin-link-row">
+                    <span class="admin-ico">📦</span>
+                    <span class="admin-label">Order Items</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/payments">
+                <span class="admin-link-row">
+                    <span class="admin-ico">💳</span>
+                    <span class="admin-label">Payments</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/customers">
+                <span class="admin-link-row">
+                    <span class="admin-ico">👤</span>
+                    <span class="admin-label">Customers</span>
+                </span>
+            </NavLink>
+        </nav>
+
+        <div class="admin-subsection">Catalog</div>
+
+        <nav class="admin-nav">
+            <NavLink class="admin-link" href="/admin/catalog">
+                <span class="admin-link-row">
+                    <span class="admin-ico">🗂️</span>
+                    <span class="admin-label">Catalog</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/books">
+                <span class="admin-link-row">
+                    <span class="admin-ico">📚</span>
+                    <span class="admin-label">Books</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/authors">
+                <span class="admin-link-row">
+                    <span class="admin-ico">✍️</span>
+                    <span class="admin-label">Authors</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/categories">
+                <span class="admin-link-row">
+                    <span class="admin-ico">🏷️</span>
+                    <span class="admin-label">Categories</span>
+                </span>
+            </NavLink>
+
+            <NavLink class="admin-link" href="/admin/reviews">
+                <span class="admin-link-row">
+                    <span class="admin-ico">⭐</span>
+                    <span class="admin-label">Reviews</span>
+                </span>
+            </NavLink>
+        </nav>
+
+        <div class="admin-footer">
+            <form class="admin-logout" action="/Account/Logout" method="post">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="/" />
+                <button type="submit" class="admin-logout-btn">Logout</button>
+            </form>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-top">
+            <a class="admin-top-link" href="/">Home</a>
+            <a class="admin-top-link" href="/Account/Manage">Account</a>
+        </header>
+
+        <section class="admin-content">
+            @Body
+        </section>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

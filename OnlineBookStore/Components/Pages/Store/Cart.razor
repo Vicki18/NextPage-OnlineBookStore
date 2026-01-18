@@ -1,0 +1,115 @@
+﻿@page "/store/cart"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineBookStore.Services
+
+@inject CartService CartSvc
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Cart</PageTitle>
+
+@if (blockingAdmin)
+{
+    <p class="text-muted">Redirecting...</p>
+}
+else
+{
+    <h2 class="mb-3">My Cart</h2>
+
+    @if (CartSvc.IsEmpty())
+    {
+        <p class="text-muted">My cart is empty.</p>
+        <a class="btn btn-primary" href="/store/books">Browse Books</a>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th style="width:120px;">Price</th>
+                    <th style="width:130px;">Qty</th>
+                    <th style="width:140px;">Subtotal</th>
+                    <th style="width:100px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in CartSvc.Items)
+                {
+                    <tr>
+                        <td>@item.Title</td>
+                        <td>$@item.UnitPrice.ToString("0.00")</td>
+                        <td>
+                            <input type="number" class="form-control"
+                                   min="0"
+                                   value="@item.Quantity"
+                                   @onchange="(e) => ChangeQty(item.BookId, e.Value)" />
+                        </td>
+                        <td>$@item.LineTotal.ToString("0.00")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="() => Remove(item.BookId)">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="fs-5 fw-bold">Total: $@CartSvc.Total().ToString("0.00")</div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" @onclick="ClearCart">Clear</button>
+                <button class="btn btn-primary" @onclick="GoCheckout">
+                    Checkout
+                </button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private bool blockingAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = state.User;
+
+        if (principal?.Identity?.IsAuthenticated == true && principal.IsInRole("Administrator"))
+        {
+            blockingAdmin = true;
+            Nav.NavigateTo("/admin", true);
+        }
+    }
+
+    private void ChangeQty(int bookId, object? raw)
+    {
+        if (raw == null) return;
+
+        if (int.TryParse(raw.ToString(), out var qty))
+            CartSvc.UpdateQty(bookId, qty);
+    }
+
+    private void Remove(int bookId)
+    {
+        CartSvc.Remove(bookId);
+    }
+
+    private void ClearCart()
+    {
+        CartSvc.Clear();
+    }
+
+    private void GoCheckout()
+    {
+        Nav.NavigateTo("/store/checkout");
+    }
+}

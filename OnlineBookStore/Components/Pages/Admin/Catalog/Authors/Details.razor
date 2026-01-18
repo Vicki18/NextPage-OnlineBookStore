@@ -1,0 +1,71 @@
+﻿@page "/admin/authors/details"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject AdminAuthorService Authors
+
+<PageTitle>Author Details</PageTitle>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (item == null)
+{
+    <div class="alert alert-warning">Author not found.</div>
+    <a class="btn btn-outline-secondary" href="/admin/authors">Back</a>
+}
+else
+{
+    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <h1 class="mb-1">@((item.Name ?? "(No Name)"))</h1>
+            <div class="text-muted">@((item.Books?.Count ?? 0)) book(s) linked</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="/admin/authors/edit?id=@item.Id">Edit</a>
+            <a class="btn btn-outline-danger" href="/admin/authors/delete?id=@item.Id">Delete</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="text-muted small">Bio</div>
+            <div>@(string.IsNullOrWhiteSpace(item.Bio) ? "-" : item.Bio)</div>
+
+            <div class="mt-4">
+                <div class="text-muted small mb-1">Linked Books</div>
+                @if (item.Books == null || item.Books.Count == 0)
+                {
+                    <div class="text-muted">No linked books.</div>
+                }
+                else
+                {
+                    <ul class="mb-0">
+                        @foreach (var b in item.Books.OrderBy(x => x.Title))
+                        {
+                            <li>@(b.Title ?? "(Untitled)")</li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <a class="btn btn-outline-secondary mt-4" href="/admin/authors">Back to list</a>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] public int id { get; set; }
+    private bool loading = true;
+    private Author? item;
+
+    protected override async Task OnInitializedAsync()
+    {
+        item = await Authors.GetAuthorAsync(id);
+        loading = false;
+    }
+}

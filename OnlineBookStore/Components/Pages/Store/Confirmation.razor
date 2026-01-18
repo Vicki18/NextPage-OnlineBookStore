@@ -1,0 +1,13 @@
+﻿@page "/store/confirmation/{OrderId:int}"
+@rendermode InteractiveServer
+
+<h2>Order Confirmed ✅</h2>
+
+<p>Your order ID is: <b>@OrderId</b></p>
+
+<a class="btn btn-primary me-2" href="/store/myorders">View My Orders</a>
+<a class="btn btn-outline-secondary" href="/store/books">Continue Shopping</a>
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+}

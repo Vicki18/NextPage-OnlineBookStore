@@ -1,0 +1,229 @@
+﻿@page "/store/checkout"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using OnlineBookStore.Data
+@using OnlineBookStore.Services
+@using System.ComponentModel.DataAnnotations
+
+@inject CartService CartSvc
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IServiceScopeFactory ScopeFactory
+@inject NavigationManager Nav
+
+<PageTitle>Checkout</PageTitle>
+
+@if (blockingAdmin)
+{
+    <p class="text-muted">Redirecting...</p>
+}
+else
+{
+    <h1 class="mb-4">Checkout</h1>
+
+    @if (CartSvc.IsEmpty())
+    {
+        <p class="text-muted">Your cart is empty.</p>
+        <a class="btn btn-primary" href="/store/books">Browse Books</a>
+    }
+    else if (!loaded)
+    {
+        <p class="text-muted">Loading...</p>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="alert alert-danger">@error</div>
+        }
+
+        <EditForm Model="model" OnValidSubmit="PlaceOrderAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row g-4">
+               
+                <div class="col-md-6">
+                    <div class="p-4 border rounded bg-white">
+                        <h4 class="mb-4">Customer Info</h4>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" value="@model.Email" disabled />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <InputText class="form-control" @bind-Value="model.FullName" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <InputText class="form-control" @bind-Value="model.Phone" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <InputTextArea class="form-control" rows="3" @bind-Value="model.Address" />
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="col-md-6">
+                    <div class="p-4 border rounded bg-white">
+                        <h4 class="mb-4">Order Summary</h4>
+
+                        <ul class="list-group mb-3">
+                            @foreach (var item in CartSvc.Items)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold">@item.Title</div>
+                                        <div class="text-muted small">Qty: @item.Quantity</div>
+                                    </div>
+                                    <div class="fw-bold">$@item.LineTotal.ToString("0.00")</div>
+                                </li>
+                            }
+
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="fw-bold">Total</span>
+                                <span class="fw-bold">$@CartSvc.Total().ToString("0.00")</span>
+                            </li>
+                        </ul>
+
+                        <div class="mb-3">
+                            <label class="form-label">Payment Method</label>
+                            <InputSelect class="form-select" @bind-Value="model.PaymentMethod">
+                                <option value="">-- Select --</option>
+                                <option value="Card">Credit / Debit Card (Visa, MasterCard)</option>
+                                <option value="PayNow">PayNow</option>
+                                <option value="PayPal">PayPal</option>
+                            </InputSelect>
+                        </div>
+
+                        <button class="btn btn-primary w-100" type="submit" disabled="@submitting">
+                            @(submitting ? "Placing Order..." : "Place Order")
+                        </button>
+
+                        <button class="btn btn-outline-secondary w-100 mt-2" type="button" @onclick="BackToCart">
+                            Back to Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </EditForm>
+    }
+}
+
+@code {
+    private bool loaded = false;
+    private bool submitting = false;
+    private string error = "";
+
+    private bool blockingAdmin = false;
+
+    private CheckoutModel model = new();
+    private int currentCustomerId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loaded = false;
+        error = "";
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = state.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            Nav.NavigateTo("/Account/Login", true);
+            return;
+        }
+
+        
+        if (principal.IsInRole("Administrator"))
+        {
+            blockingAdmin = true;
+            Nav.NavigateTo("/admin", true);
+            return;
+        }
+
+        using var scope = ScopeFactory.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<OnlineBookStoreUser>>();
+        var customerSvc = scope.ServiceProvider.GetRequiredService<CustomerService>();
+
+        var user = await userManager.GetUserAsync(principal);
+        if (user is null)
+        {
+            Nav.NavigateTo("/Account/Login", true);
+            return;
+        }
+
+        var customer = await customerSvc.GetOrCreateCustomerForCurrentUserAsync(principal);
+        currentCustomerId = customer.Id;
+
+        model.Email = user.Email ?? "";
+        model.FullName = $"{user.FirstName} {user.LastName}".Trim();
+        model.Phone = user.PhoneNumber ?? "";
+        model.Address = user.Address ?? "";
+
+        loaded = true;
+    }
+
+    private void BackToCart() => Nav.NavigateTo("/store/cart");
+
+    private async Task PlaceOrderAsync()
+    {
+        error = "";
+        submitting = true;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var customerSvc = scope.ServiceProvider.GetRequiredService<CustomerService>();
+            var orderSvc = scope.ServiceProvider.GetRequiredService<OrderService>();
+
+            await customerSvc.UpdateCustomerProfileAsync(
+                currentCustomerId,
+                model.FullName,
+                model.Phone,
+                model.Address);
+
+            var orderId = await orderSvc.PlaceOrderAsync(
+                currentCustomerId,
+                CartSvc.Items.ToList(),
+                model.PaymentMethod);
+
+            CartSvc.Clear();
+            Nav.NavigateTo($"/store/confirmation/{orderId}");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    public class CheckoutModel
+    {
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Full Name is required.")]
+        public string FullName { get; set; } = "";
+
+        [Required(ErrorMessage = "Phone is required.")]
+        public string Phone { get; set; } = "";
+
+        [Required(ErrorMessage = "Address is required.")]
+        public string Address { get; set; } = "";
+
+        [Required(ErrorMessage = "Please select a payment method.")]
+        public string PaymentMethod { get; set; } = "";
+    }
+}

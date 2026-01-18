@@ -1,0 +1,209 @@
+﻿@page "/admin/orders"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminOrderService AdminOrders
+
+<PageTitle>Orders</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Orders</h1>
+        <div class="text-muted">Search and manage orders .</div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-7">
+                <label class="form-label">Search</label>
+                <input class="form-control"
+                       placeholder="Order ID / Customer name / Email"
+                       @bind="search" @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Sort by</label>
+                <select class="form-select" @bind="sort" @bind:after="OnSortChanged">
+                    @foreach (var opt in sortOptions)
+                    {
+                        <option value="@opt.Value">@opt.Label</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary flex-fill" @onclick="ReloadAsync" disabled="@loading">Search</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAsync" disabled="@loading">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (orders.Count == 0)
+{
+    <p class="text-muted">No orders found.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:90px">Order #</th>
+                    <th>Customer</th>
+                    <th style="width:170px">Date</th>
+                    <th style="width:120px">Status</th>
+                    <th style="width:140px" class="text-end">Total</th>
+                    <th style="width:120px" class="text-end">Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in orders)
+                {
+                    var statusText = DisplayStatus(o);
+
+                    <tr>
+                        <td class="fw-semibold">@o.Id</td>
+
+                        <td>
+                            <div class="fw-semibold">@(o.Customer?.FullName ?? "-")</div>
+                            <div class="text-muted small">@(o.Customer?.Email ?? "")</div>
+                        </td>
+
+                        <td>@o.OrderDate.ToString("dd MMM yyyy")</td>
+
+                        <td>
+                            @statusText
+                        </td>
+
+
+                        <td class="text-end fw-semibold">$@o.TotalAmount.ToString("0.00")</td>
+
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/orders/details?id=@o.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+
+    private string search = "";
+
+    private const string DefaultSort = "date_desc";
+    private string sort = DefaultSort;
+
+    private readonly List<(string Value, string Label)> sortOptions = new()
+    {
+        ("date_desc",  "Date (Newest)"),
+        ("date_asc",   "Date (Oldest)"),
+        ("id_asc",     "Order ID (Low → High)"),
+        ("id_desc",    "Order ID (High → Low)"),
+        ("total_asc",  "Total (Low → High)"),
+        ("total_desc", "Total (High → Low)")
+    };
+
+    private List<Orders> rawOrders = new();
+    private List<Orders> orders = new();
+
+    
+    private List<Orders>? allOrdersCache;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            
+            rawOrders = await AdminOrders.GetOrdersAsync(search, status: null, take: 250);
+
+            
+            if (string.IsNullOrWhiteSpace(search))
+                allOrdersCache = rawOrders.ToList();
+
+            ApplySortToView();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            rawOrders = new();
+            orders = new();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task OnSortChanged()
+    {
+        ApplySortToView();
+        return Task.CompletedTask;
+    }
+
+    private Task ClearAsync()
+    {
+        search = "";
+        sort = DefaultSort;
+
+        if (allOrdersCache != null)
+        {
+            rawOrders = allOrdersCache.ToList();
+            ApplySortToView();
+            return Task.CompletedTask;
+        }
+
+        return ReloadAsync();
+    }
+
+    private void ApplySortToView()
+    {
+        orders = sort switch
+        {
+            "date_asc" => rawOrders.OrderBy(o => o.OrderDate).ToList(),
+            "date_desc" => rawOrders.OrderByDescending(o => o.OrderDate).ToList(),
+            "id_asc" => rawOrders.OrderBy(o => o.Id).ToList(),
+            "id_desc" => rawOrders.OrderByDescending(o => o.Id).ToList(),
+            "total_asc" => rawOrders.OrderBy(o => o.TotalAmount).ToList(),
+            "total_desc" => rawOrders.OrderByDescending(o => o.TotalAmount).ToList(),
+            _ => rawOrders.OrderByDescending(o => o.OrderDate).ToList()
+        };
+    }
+
+    
+    private static string DisplayStatus(Orders o)
+    {
+        var s1 = (o.Status ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(s1)) return s1;
+
+        var s2 = (o.Payment?.PaymentStatus ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(s2)) return s2;
+
+        return "Unknown";
+    }
+
+}

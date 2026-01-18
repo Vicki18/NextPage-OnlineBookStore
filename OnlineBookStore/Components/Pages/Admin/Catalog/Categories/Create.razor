@@ -1,0 +1,80 @@
+﻿@page "/admin/categories/create"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject AdminCategoryService Categories
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>Create Category</PageTitle>
+
+<h1 class="mb-1">Create Category</h1>
+<div class="text-muted mb-3">Add a new category for books.</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<EditForm Model="model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Category Name</label>
+                    <InputText class="form-control" @bind-Value="model.CategoryName" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <InputTextArea class="form-control" @bind-Value="model.Description" rows="4" />
+                    <div class="form-text">Optional — what kind of books belong here?</div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary" type="submit" disabled="@saving">Create</button>
+                <a class="btn btn-outline-secondary" href="/admin/categories">Cancel</a>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private Category model = new();
+    private bool saving;
+    private string? error;
+
+    private async Task SaveAsync()
+    {
+        saving = true;
+        error = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(model.CategoryName))
+                throw new Exception("Category name is required.");
+
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var email = auth.User?.Identity?.Name;
+
+            await Categories.CreateAsync(model, email);
+            Nav.NavigateTo("/admin/categories");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

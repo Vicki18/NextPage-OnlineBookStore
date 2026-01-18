@@ -1,0 +1,130 @@
+﻿@page "/admin/orderitems/details"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminOrderItemService AdminOrderItems
+
+<PageTitle>Order Item Details</PageTitle>
+
+<div class="oi-head">
+    <div>
+        <h1 class="oi-title">Order Item #@Id</h1>
+        <div class="oi-subtitle">Line item details</div>
+    </div>
+
+    <div class="oi-actions">
+        <a class="btn btn-outline-secondary" href="/admin/orderitems">Back</a>
+        @if (item?.OrderId > 0)
+        {
+            <a class="btn btn-outline-primary" href="/admin/orders/details?id=@item!.OrderId">Go to Order</a>
+        }
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (item == null)
+{
+    <p class="text-muted">Order item not found.</p>
+}
+else
+{
+    <div class="card oi-card">
+        <div class="card-body">
+            <div class="oi-grid">
+                
+                <div class="oi-section">
+                    <div class="oi-section-title">Book</div>
+
+                    <div class="oi-kv">
+                        <div class="oi-k">Title</div>
+                        <div class="oi-v fw-semibold">@((item.Book?.Title ?? $"Book #{item.BookId}"))</div>
+                    </div>
+
+                    <div class="oi-kv">
+                        <div class="oi-k">Book ID</div>
+                        <div class="oi-v">@item.BookId</div>
+                    </div>
+                </div>
+
+                
+                <div class="oi-section">
+                    <div class="oi-section-title">Order</div>
+
+                    <div class="oi-kv">
+                        <div class="oi-k">Order #</div>
+                        <div class="oi-v">
+                            <a href="/admin/orders/details?id=@item.OrderId" class="oi-link">#@item.OrderId</a>
+                        </div>
+                    </div>
+
+                    <div class="oi-kv">
+                        <div class="oi-k">Customer</div>
+                        <div class="oi-v">
+                            <div class="fw-semibold">@((item.Order?.Customer?.FullName ?? "-"))</div>
+                            <div class="text-muted small">@((item.Order?.Customer?.Email ?? ""))</div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="oi-section oi-section-wide">
+                    <div class="oi-metrics">
+                        <div class="oi-metric">
+                            <div class="oi-metric-k">Quantity</div>
+                            <div class="oi-metric-v">@item.Quantity</div>
+                        </div>
+
+                        <div class="oi-metric">
+                            <div class="oi-metric-k">Unit Price</div>
+                            <div class="oi-metric-v">$@item.UnitPrice.ToString("0.00")</div>
+                        </div>
+
+                        <div class="oi-metric">
+                            <div class="oi-metric-k">Subtotal</div>
+                            <div class="oi-metric-v">$@item.LineTotal.ToString("0.00")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    
+    [SupplyParameterFromQuery(Name = "id")]
+    public int Id { get; set; }
+
+    private bool loading = true;
+    private string? error;
+    private OrderItem? item;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            
+            item = await AdminOrderItems.GetOrderItemAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

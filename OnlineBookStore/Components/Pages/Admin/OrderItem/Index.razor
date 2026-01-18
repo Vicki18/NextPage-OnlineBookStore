@@ -1,0 +1,211 @@
+﻿@page "/admin/orderitems"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminOrderItemService AdminOrderItems
+
+<PageTitle>Order Items</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Order Items</h1>
+        <div class="text-muted">Search line items across orders.</div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-7">
+                <label class="form-label">Search</label>
+                <input class="form-control"
+                       placeholder="Book title / Customer name / Order ID"
+                       @bind="search" @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Sort by</label>
+                
+                <select class="form-select" @bind="sort" @bind:after="OnSortChanged">
+                    @foreach (var opt in sortOptions)
+                    {
+                        <option value="@opt.Value">@opt.Label</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary flex-fill" @onclick="ReloadAsync" disabled="@loading">Filter</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAsync" disabled="@loading">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (items.Count == 0)
+{
+    <p class="text-muted">No order items found.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:90px">Item #</th>
+                    <th style="width:90px">Order #</th>
+                    <th>Book</th>
+                    <th>Customer</th>
+                    <th style="width:90px" class="text-end">Qty</th>
+                    <th style="width:140px" class="text-end">Unit</th>
+                    <th style="width:140px" class="text-end">Subtotal</th>
+                    <th style="width:120px" class="text-end">Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var oi in items)
+                {
+                    <tr>
+                        <td class="fw-semibold">@oi.Id</td>
+                        <td><a href="/admin/orders/details?id=@oi.OrderId">@oi.OrderId</a></td>
+
+                        <td>
+                            <div class="fw-semibold">@(oi.Book?.Title ?? $"Book #{oi.BookId}")</div>
+                            <div class="text-muted small">Book ID: @oi.BookId</div>
+                        </td>
+
+                        <td>
+                            <div class="fw-semibold">@(oi.Order?.Customer?.FullName ?? "-")</div>
+                            <div class="text-muted small">@(oi.Order?.Customer?.Email ?? "")</div>
+                        </td>
+
+                        <td class="text-end">@oi.Quantity</td>
+                        <td class="text-end">$@oi.UnitPrice.ToString("0.00")</td>
+                        <td class="text-end fw-semibold">$@oi.LineTotal.ToString("0.00")</td>
+
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/orderitems/details?id=@oi.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+
+    private string search = "";
+
+    private const string DefaultSort = "id_desc";
+    private string sort = DefaultSort;
+
+    private readonly List<(string Value, string Label)> sortOptions = new()
+    {
+        ("id_desc",       "Item # (Newest)"),
+        ("id_asc",        "Item # (Oldest)"),
+        ("qty_desc",      "Qty (High → Low)"),
+        ("qty_asc",       "Qty (Low → High)"),
+        ("unit_desc",     "Unit Price (High → Low)"),
+        ("unit_asc",      "Unit Price (Low → High)"),
+        ("subtotal_desc", "Subtotal (High → Low)"),
+        ("subtotal_asc",  "Subtotal (Low → High)")
+    };
+
+    
+    private List<OrderItem> rawItems = new();
+    private List<OrderItem> items = new();
+
+    
+    private List<OrderItem>? allItemsCache;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            
+            rawItems = await AdminOrderItems.GetOrderItemsAsync(search, orderId: null, take: 400);
+
+            
+            if (string.IsNullOrWhiteSpace(search))
+                allItemsCache = rawItems.ToList();
+
+            ApplySortToView();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            rawItems = new();
+            items = new();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task OnSortChanged()
+    {
+        
+        ApplySortToView();
+        return Task.CompletedTask;
+    }
+
+    private Task ClearAsync()
+    {
+        
+        search = "";
+        sort = DefaultSort;
+
+        
+        if (allItemsCache != null)
+        {
+            rawItems = allItemsCache.ToList();
+            ApplySortToView();
+            return Task.CompletedTask;
+        }
+
+        
+        return ReloadAsync();
+    }
+
+    private void ApplySortToView()
+    {
+        items = sort switch
+        {
+            "id_asc" => rawItems.OrderBy(x => x.Id).ToList(),
+            "id_desc" => rawItems.OrderByDescending(x => x.Id).ToList(),
+
+            "qty_asc" => rawItems.OrderBy(x => x.Quantity).ThenByDescending(x => x.Id).ToList(),
+            "qty_desc" => rawItems.OrderByDescending(x => x.Quantity).ThenByDescending(x => x.Id).ToList(),
+
+            "unit_asc" => rawItems.OrderBy(x => x.UnitPrice).ThenByDescending(x => x.Id).ToList(),
+            "unit_desc" => rawItems.OrderByDescending(x => x.UnitPrice).ThenByDescending(x => x.Id).ToList(),
+
+            "subtotal_asc" => rawItems.OrderBy(x => x.LineTotal).ThenByDescending(x => x.Id).ToList(),
+            "subtotal_desc" => rawItems.OrderByDescending(x => x.LineTotal).ThenByDescending(x => x.Id).ToList(),
+
+            _ => rawItems.OrderByDescending(x => x.Id).ToList()
+        };
+    }
+}

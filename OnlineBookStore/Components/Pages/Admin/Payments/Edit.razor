@@ -1,0 +1,178 @@
+﻿@page "/admin/payments/edit"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminPaymentService AdminPayments
+
+<PageTitle>Edit Payment</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Edit Payment #@Id</h1>
+        <div class="text-muted">Update payment method, status, amount and paid date.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/admin/payments/details?id=@Id">Back</a>
+        <a class="btn btn-outline-primary" href="/admin/payments">All Payments</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (payment is null)
+{
+    <div class="alert alert-warning">Payment not found.</div>
+}
+else
+{
+    <EditForm Model="edit" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+
+        @if (!string.IsNullOrWhiteSpace(success))
+        {
+            <div class="alert alert-success">@success</div>
+        }
+
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">Payment</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Order ID</label>
+                        <input class="form-control" value="@payment.OrderId" disabled />
+                        <div class="form-text">
+                            <a href="/admin/orders/details?id=@payment.OrderId">Open Order</a>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Method</label>
+                        <InputText class="form-control" @bind-Value="edit.PaymentMethod" placeholder="Card / PayNow / ..." />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <InputSelect class="form-select" @bind-Value="edit.PaymentStatus">
+                            @foreach (var s in statusOptions)
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Amount</label>
+                        <InputNumber class="form-control" @bind-Value="edit.Amount" />
+                        <div class="form-text">Use this only if you need manual adjustments.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Date Paid</label>
+                        <InputDate class="form-control" @bind-Value="edit.DatePaid" />
+                    </div>
+                </div>
+
+                <div class="alert alert-light border mt-3 mb-0">
+                    <div class="text-muted small">
+                        For best consistency, reconcile payment + order status in <span class="fw-semibold">Orders → Update</span>.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" type="submit" disabled="@saving">Save</button>
+            <a class="btn btn-outline-secondary" href="/admin/payments/details?id=@Id">Cancel</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private bool loading = true;
+    private bool saving = false;
+
+    private string? error;
+    private string? success;
+
+    private Payment? payment;
+    private EditModel edit = new();
+
+    private List<string> statusOptions = new() { "Pending", "Paid", "Failed", "Refunded" };
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            payment = await AdminPayments.GetPaymentDetailsAsync(Id);
+            if (payment is null) return;
+
+            edit.Id = payment.Id;
+            edit.PaymentMethod = payment.PaymentMethod;
+            edit.PaymentStatus = payment.PaymentStatus;
+            edit.Amount = payment.Amount;
+            edit.DatePaid = payment.DatePaid;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (payment is null) return;
+
+        saving = true;
+        error = null;
+        success = null;
+
+        try
+        {
+            var updated = new Payment
+            {
+                Id = edit.Id,
+                PaymentMethod = edit.PaymentMethod,
+                PaymentStatus = edit.PaymentStatus,
+                Amount = edit.Amount,
+                DatePaid = edit.DatePaid
+            };
+
+            await AdminPayments.UpdatePaymentAsync(updated);
+            success = "Payment updated successfully.";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class EditModel
+    {
+        public int Id { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? PaymentStatus { get; set; }
+        public decimal Amount { get; set; }
+        public DateTime? DatePaid { get; set; }
+    }
+}

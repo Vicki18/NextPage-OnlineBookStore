@@ -1,0 +1,124 @@
+﻿/* ==============================
+   ADMIN DASHBOARD (Scoped)
+   ============================== */
+
+.admin-header {
+    margin-bottom: 22px;
+}
+
+    .admin-header h1 {
+        font-size: 36px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: #111827;
+        margin: 0 0 6px 0;
+    }
+
+.admin-subtitle {
+    color: #6b7280;
+    font-size: 16px;
+    max-width: 760px;
+    margin: 0;
+}
+
+/* Grid */
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+}
+
+/* Cards */
+.admin-card {
+    grid-column: span 4;
+    border-radius: 18px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    padding: 20px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 170px;
+}
+
+    .admin-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+    }
+
+.admin-card-top h3 {
+    font-size: 18px;
+    font-weight: 900;
+    margin: 0 0 6px 0;
+    color: #111827;
+}
+
+.admin-card-top p {
+    margin: 0 0 14px 0;
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Buttons */
+.admin-card-btn {
+    display: inline-block;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-weight: 900;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+    /* Primary (Orders/Payments) */
+    .admin-card-btn.primary {
+        background: #1e3a8a;
+        color: #ffffff;
+    }
+
+        .admin-card-btn.primary:hover {
+            background: #1e40af;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+    /* Secondary */
+    .admin-card-btn.secondary {
+        background: #111827;
+        color: #ffffff;
+    }
+
+        .admin-card-btn.secondary:hover {
+            background: #030712;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+    /* Outline (Store Preview / Catalog) */
+    .admin-card-btn.outline {
+        border: 2px solid #2563eb;
+        color: #2563eb;
+        background: transparent;
+    }
+
+        .admin-card-btn.outline:hover {
+            background: #2563eb;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+/* Responsive */
+@media (max-width: 1100px) {
+    .admin-card {
+        grid-column: span 6;
+    }
+}
+
+@media (max-width: 700px) {
+    .admin-card {
+        grid-column: span 12;
+    }
+}

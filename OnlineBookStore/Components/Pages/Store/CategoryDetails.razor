@@ -1,0 +1,101 @@
+﻿@page "/store/category/{Id:int}"
+@rendermode InteractiveServer
+
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStore.Data
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@inject IDbContextFactory<OnlineBookStoreContext> DbFactory
+@inject CartService Cart
+@inject NavigationManager Nav
+
+<PageTitle>Category</PageTitle>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (category == null)
+{
+    <div class="alert alert-warning">Category not found.</div>
+    <button class="btn btn-outline-secondary" @onclick="Back">Back</button>
+}
+else
+{
+    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <h2 class="mb-1">@category.CategoryName</h2>
+            @if (!string.IsNullOrWhiteSpace(category.Description))
+            {
+                <div class="text-muted">@category.Description</div>
+            }
+        </div>
+        <button class="btn btn-outline-primary" @onclick="BrowseAll">Browse in Books Page</button>
+    </div>
+
+    @if (books.Count == 0)
+    {
+        <p class="text-muted">No books in this category.</p>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var b in books)
+            {
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-3">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrWhiteSpace(b.CoverImageUrl))
+                        {
+                            <img class="card-img-top" src="@b.CoverImageUrl" alt="cover" style="height:180px; object-fit:cover;" />
+                        }
+                        <div class="card-body d-flex flex-column">
+                            <h6 class="card-title">@b.Title</h6>
+                            <div class="text-muted small mb-2">@((b.Author?.Name ?? "Unknown Author"))</div>
+                            <div class="fw-bold mb-2">$@b.Price</div>
+
+                            <div class="mt-auto d-grid gap-2">
+                                <button class="btn btn-outline-secondary" @onclick="() => GoDetails(b.Id)">View Details</button>
+                                <button class="btn btn-primary"
+                                        disabled="@(b.StockQty <= 0 ? "disabled" : null)"
+                                        @onclick="() => AddToCart(b)">
+                                    @(b.StockQty <= 0 ? "Out of Stock" : "Add to Cart")
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <button class="btn btn-outline-secondary" @onclick="Back">Back</button>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool loading = true;
+    private Category? category;
+    private List<Book> books = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        category = await db.Category.FirstOrDefaultAsync(c => c.Id == Id);
+
+        books = await db.Book
+            .Include(b => b.Author)
+            .Where(b => b.CategoryId == Id)
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+
+        loading = false;
+    }
+
+    private void GoDetails(int id) => Nav.NavigateTo($"/store/book/{id}");
+    private void Back() => Nav.NavigateTo("/store/categories");
+    private void BrowseAll() => Nav.NavigateTo($"/store/books?cat={Id}");
+
+    private void AddToCart(Book b) => Cart.Add(b, 1);
+}

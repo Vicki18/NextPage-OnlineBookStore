@@ -1,0 +1,104 @@
+﻿
+.np-auth {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 26px 0 10px;
+}
+
+.np-auth-header {
+    margin-bottom: 14px;
+}
+
+.np-auth-h1 {
+    font-size: clamp(2.1rem, 3.2vw, 2.9rem);
+    font-weight: 850;
+    letter-spacing: -0.02em;
+    margin: 0 0 8px;
+}
+
+.np-auth-subtitle {
+    margin: 0 0 12px;
+    color: #475569;
+    line-height: 1.6;
+}
+
+.np-auth-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+}
+
+@media (min-width: 992px) {
+    .np-auth-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+        align-items: start;
+    }
+}
+
+.np-auth-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.06);
+    padding: clamp(18px, 2.6vw, 26px);
+}
+
+.np-auth-title {
+    font-size: 1.02rem;
+    font-weight: 850;
+    color: #0f172a;
+    margin: 0;
+}
+
+.np-auth-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 12px 0 14px;
+}
+
+.np-auth .form-floating {
+    margin-bottom: 14px;
+}
+
+.np-auth-input.form-control {
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+}
+
+    .np-auth-input.form-control:focus {
+        border-color: rgba(37, 99, 235, 0.55);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+    }
+
+.np-auth-submit {
+    border-radius: 12px;
+    font-weight: 850;
+    padding: 0.75rem 1rem;
+}
+
+.np-auth-validation.validation-summary-errors,
+.np-auth .text-danger {
+    color: #b91c1c !important;
+}
+
+.np-auth-validation {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    padding: 12px 14px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+}
+
+.np-auth-external[hidden] {
+    display: none !important;
+}
+
+.np-auth-external .btn {
+    border-radius: 12px;
+}
+
+.np-auth-body {
+    color: #475569;
+    line-height: 1.65;
+    margin: 0 0 14px;
+}

@@ -1,0 +1,128 @@
+﻿@page "/orderitems/edit"
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStore.Domain
+@inject IDbContextFactory<OnlineBookStore.Data.OnlineBookStoreContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>OrderItem</h2>
+<hr />
+@if (OrderItem is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="OrderItem" OnValidSubmit="UpdateOrderItem" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="OrderItem.Id" value="@OrderItem.Id" />
+                <div class="mb-3">
+                    <label for="quantity" class="form-label">Quantity:</label>
+                    <InputNumber id="quantity" @bind-Value="OrderItem.Quantity" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.Quantity" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="unitprice" class="form-label">UnitPrice:</label>
+                    <InputNumber id="unitprice" @bind-Value="OrderItem.UnitPrice" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.UnitPrice" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="linetotal" class="form-label">LineTotal:</label>
+                    <InputNumber id="linetotal" @bind-Value="OrderItem.LineTotal" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.LineTotal" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="orderid" class="form-label">OrderId:</label>
+                    <InputNumber id="orderid" @bind-Value="OrderItem.OrderId" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.OrderId" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="bookid" class="form-label">BookId:</label>
+                    <InputNumber id="bookid" @bind-Value="OrderItem.BookId" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.BookId" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="datecreated" class="form-label">DateCreated:</label>
+                    <InputDate id="datecreated" @bind-Value="OrderItem.DateCreated" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.DateCreated" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="dateupdated" class="form-label">DateUpdated:</label>
+                    <InputDate id="dateupdated" @bind-Value="OrderItem.DateUpdated" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.DateUpdated" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="createdby" class="form-label">CreatedBy:</label>
+                    <InputText id="createdby" @bind-Value="OrderItem.CreatedBy" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.CreatedBy" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="updatedby" class="form-label">UpdatedBy:</label>
+                    <InputText id="updatedby" @bind-Value="OrderItem.UpdatedBy" class="form-control" />
+                    <ValidationMessage For="() => OrderItem.UpdatedBy" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/orderitems">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private OrderItem? OrderItem { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        OrderItem ??= await context.OrderItem.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (OrderItem is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    
+    private async Task UpdateOrderItem()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(OrderItem!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!OrderItemExists(OrderItem!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/orderitems");
+    }
+
+    private bool OrderItemExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.OrderItem.Any(e => e.Id == id);
+    }
+}

@@ -1,0 +1,221 @@
+﻿
+.admin-app {
+    display: flex;
+    min-height: 100vh;
+    background: #fff;
+}
+
+
+.admin-sidebar {
+    width: 278px;
+    background: #fbfbfd;
+    color: #111827;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    border-right: 1px solid #e5e7eb;
+}
+
+
+.admin-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 14px;
+    margin-bottom: 14px;
+    font-weight: 900;
+    letter-spacing: .2px;
+    color: #111827;
+    text-decoration: none;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+    .admin-brand:hover {
+        color: #111827;
+        text-decoration: none;
+    }
+
+.admin-brand-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: #1d4ed8;
+    box-shadow: 0 0 0 4px rgba(29,78,216,.12);
+}
+
+
+.admin-section, .admin-subsection {
+    margin-top: 4px;
+    padding: 10px 10px 8px;
+    font-size: 11px;
+    font-weight: 900;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.admin-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 6px 12px;
+    margin-bottom: 10px;
+}
+
+
+.admin-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 14px;
+    color: #111827;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+    .admin-link:hover {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+        transform: translateY(-1px);
+    }
+
+.admin-ico {
+    width: 32px;
+    height: 32px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 12px;
+    font-size: 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    flex: 0 0 auto;
+}
+
+.admin-label {
+    position: relative;
+    display: inline-block;
+    width: fit-content;
+    white-space: nowrap;
+}
+
+
+.admin-link.active {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
+}
+
+    .admin-link.active .admin-ico {
+        background: rgba(255,255,255,.12);
+        border-color: rgba(255,255,255,.2);
+        color: #fff;
+    }
+
+    .admin-link.active::before {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 10px;
+        bottom: 10px;
+        width: 4px;
+        border-radius: 999px;
+        background: #2563eb;
+    }
+
+
+.admin-label {
+    display: inline-block;
+    border-bottom: 2px solid transparent;
+    padding-bottom: 4px; 
+}
+
+.admin-link:hover .admin-label,
+.admin-link.active .admin-label {
+    border-bottom-color: #2563eb;
+}
+
+
+
+.admin-footer {
+    margin-top: auto;
+    padding: 12px 6px 4px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.admin-logout {
+    margin: 0;
+}
+
+.admin-logout-btn {
+    width: 100%;
+    border: 1px solid #111827;
+    background: #fff;
+    color: #111827;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-weight: 900;
+}
+
+    .admin-logout-btn:hover {
+        background: #111827;
+        color: #fff;
+    }
+
+
+.admin-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-top {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    padding: 0 22px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+}
+
+.admin-top-link {
+    color: #374151;
+    text-decoration: none;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 999px;
+}
+
+    .admin-top-link:hover {
+        background: #f3f4f6;
+        color: #111827;
+    }
+
+.admin-content {
+    padding: 26px 28px;
+}
+
+
+@media (max-width:900px) {
+    .admin-sidebar {
+        display: none;
+    }
+
+    .admin-content {
+        padding: 20px 18px;
+    }
+}

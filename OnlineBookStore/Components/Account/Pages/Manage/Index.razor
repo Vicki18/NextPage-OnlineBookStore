@@ -1,0 +1,105 @@
+﻿@page "/Account/Manage"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Data
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IServiceScopeFactory ScopeFactory
+
+<PageTitle>Account Settings</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="ob-account">
+            <div class="ob-account__header">
+                <h2 class="ob-account__title">Account Settings</h2>
+                <p class="ob-account__subtitle">
+                    View your personal information and update it when needed.
+                </p>
+            </div>
+
+            <div class="ob-card">
+                <h3 class="ob-card__title">Profile details</h3>
+
+                @* REMOVE for Admin only *@
+                @if (!isAdmin)
+                {
+                    <p class="ob-card__hint">Your account information for delivery and contact.</p>
+                }
+
+                <div class="ob-grid">
+                    <div class="ob-field ob-field--full">
+                        <label class="ob-label">Email</label>
+                        <input class="form-control" value="@email" disabled />
+                    </div>
+
+                    <div class="ob-field">
+                        <label class="ob-label">First Name</label>
+                        <input class="form-control" value="@firstName" disabled />
+                    </div>
+
+                    <div class="ob-field">
+                        <label class="ob-label">Last Name</label>
+                        <input class="form-control" value="@lastName" disabled />
+                    </div>
+
+                    <div class="ob-field ob-field--full">
+                        <label class="ob-label">Phone Number</label>
+                        <input class="form-control" value="@phone" disabled />
+                    </div>
+
+                    <div class="ob-field ob-field--full">
+                        <label class="ob-label">Address</label>
+                        <textarea class="form-control" rows="3" disabled>@address</textarea>
+                    </div>
+                </div>
+
+                <div class="ob-editrow">
+                    <a class="ob-editlink" href="/Account/Manage/EditProfile">
+                        Edit profile
+                    </a>
+                </div>
+
+                <div class="ob-footer-note">
+                    Password management is handled through the authentication system.
+                </div>
+            </div>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private string email = "";
+    private string firstName = "";
+    private string lastName = "";
+    private string phone = "";
+    private string address = "";
+
+    private bool isAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+            return;
+
+        isAdmin = principal.IsInRole("Administrator");
+
+        using var scope = ScopeFactory.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<OnlineBookStoreUser>>();
+
+        var user = await userManager.GetUserAsync(principal);
+        if (user is null)
+            return;
+
+        email = user.Email ?? "";
+        firstName = user.FirstName ?? "";
+        lastName = user.LastName ?? "";
+        phone = user.PhoneNumber ?? "";
+        address = user.Address ?? "";
+    }
+}

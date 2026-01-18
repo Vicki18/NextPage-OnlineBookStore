@@ -1,0 +1,99 @@
+﻿@page "/store/categories"
+@rendermode InteractiveServer
+
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStore.Data
+@using OnlineBookStore.Domain
+@inject IDbContextFactory<OnlineBookStoreContext> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>Categories</PageTitle>
+
+<h2 class="mb-3">Categories</h2>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-10">
+        <input class="form-control" placeholder="Search categories..."
+               @bind="search" @bind:event="oninput" />
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+        <button class="btn btn-outline-primary flex-fill" @onclick="LoadAsync">Search</button>
+        <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAsync">Clear</button>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (items.Count == 0)
+{
+    <p class="text-muted">No categories found.</p>
+}
+else
+{
+    <div class="row">
+        @foreach (var c in items)
+        {
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="mb-1">@c.CategoryName</h5>
+                                <div class="text-muted small">@((c.Books?.Count ?? 0)) book(s)</div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => Go(c.Id)">View</button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(c.Description))
+                        {
+                            <div class="text-muted mt-2">@c.Description</div>
+                        }
+
+                        <div class="mt-3 d-flex gap-2">
+                            <button class="btn btn-sm btn-primary" @onclick="() => Browse(c.Id)">
+                                Browse Books
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string search = "";
+    private List<Category> items = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+
+        using var db = await DbFactory.CreateDbContextAsync();
+        var q = db.Category.Include(c => c.Books).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var k = search.Trim().ToLower();
+            q = q.Where(c => (c.CategoryName ?? "").ToLower().Contains(k) ||
+                             (c.Description ?? "").ToLower().Contains(k));
+        }
+
+        items = await q.OrderBy(c => c.CategoryName).ToListAsync();
+        loading = false;
+    }
+
+    private Task ClearAsync()
+    {
+        search = "";
+        return LoadAsync();
+    }
+
+    private void Go(int id) => Nav.NavigateTo($"/store/category/{id}");
+    private void Browse(int id) => Nav.NavigateTo($"/store/books?cat={id}");
+}

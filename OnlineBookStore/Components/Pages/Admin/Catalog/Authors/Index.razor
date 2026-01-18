@@ -1,0 +1,120 @@
+﻿@page "/admin/authors"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+@inject AdminAuthorService Authors
+
+<PageTitle>Authors</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Authors</h1>
+        <div class="text-muted">Manage author profiles used in your catalog.</div>
+    </div>
+    <a class="btn btn-primary" href="/admin/authors/create">+ New Author</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-10">
+                <label class="form-label">Search</label>
+                <input class="form-control" placeholder="Author name or bio..."
+                       @bind="search" @bind:event="oninput" />
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary flex-fill" @onclick="ReloadAsync" disabled="@loading">Search</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAsync" disabled="@loading">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (items.Count == 0)
+{
+    <p class="text-muted">No authors found.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:90px">ID</th>
+                    <th>Name</th>
+                    <th style="width:140px" class="text-end">Books</th>
+                    <th style="width:220px" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in items)
+                {
+                    <tr>
+                        <td class="fw-semibold">@a.Id</td>
+                        <td>
+                            <div class="fw-semibold">@((a.Name ?? "(No Name)"))</div>
+                            @if (!string.IsNullOrWhiteSpace(a.Bio))
+                            {
+                                <div class="text-muted small text-truncate" style="max-width: 900px;">
+                                    @a.Bio
+                                </div>
+                            }
+                        </td>
+                        <td class="text-end">@((a.Books?.Count ?? 0))</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/authors/details?id=@a.Id">View</a>
+                            <a class="btn btn-sm btn-outline-secondary ms-1" href="/admin/authors/edit?id=@a.Id">Edit</a>
+                            <a class="btn btn-sm btn-outline-danger ms-1" href="/admin/authors/delete?id=@a.Id">Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+
+    private string search = "";
+    private List<Author> items = new();
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            items = await Authors.GetAuthorsAsync(search);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            items = new();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task ClearAsync()
+    {
+        search = "";
+        return ReloadAsync();
+    }
+}

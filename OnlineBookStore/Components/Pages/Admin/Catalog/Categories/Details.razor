@@ -1,0 +1,71 @@
+﻿@page "/admin/categories/details"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject AdminCategoryService Categories
+
+<PageTitle>Category Details</PageTitle>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (item == null)
+{
+    <div class="alert alert-warning">Category not found.</div>
+    <a class="btn btn-outline-secondary" href="/admin/categories">Back</a>
+}
+else
+{
+    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <h1 class="mb-1">@((item.CategoryName ?? "(No Name)"))</h1>
+            <div class="text-muted">@((item.Books?.Count ?? 0)) book(s) linked</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="/admin/categories/edit?id=@item.Id">Edit</a>
+            <a class="btn btn-outline-danger" href="/admin/categories/delete?id=@item.Id">Delete</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="text-muted small">Description</div>
+            <div>@(string.IsNullOrWhiteSpace(item.Description) ? "-" : item.Description)</div>
+
+            <div class="mt-4">
+                <div class="text-muted small mb-1">Linked Books</div>
+                @if (item.Books == null || item.Books.Count == 0)
+                {
+                    <div class="text-muted">No linked books.</div>
+                }
+                else
+                {
+                    <ul class="mb-0">
+                        @foreach (var b in item.Books.OrderBy(x => x.Title))
+                        {
+                            <li>@(b.Title ?? "(Untitled)")</li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <a class="btn btn-outline-secondary mt-4" href="/admin/categories">Back to list</a>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] public int id { get; set; }
+    private bool loading = true;
+    private Category? item;
+
+    protected override async Task OnInitializedAsync()
+    {
+        item = await Categories.GetCategoryAsync(id);
+        loading = false;
+    }
+}

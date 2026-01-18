@@ -1,0 +1,185 @@
+﻿@page "/admin/orders/details"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminOrderService AdminOrders
+
+<PageTitle>Order Details</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Order #@Id</h1>
+        <div class="text-muted">View order, items and payment details.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/admin/orders">Back</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (order is null)
+{
+    <div class="alert alert-warning">Order not found.</div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted">Customer</div>
+                            <div class="fw-semibold">@(order.Customer?.FullName ?? "(No name)")</div>
+                            <div class="text-muted small">@(order.Customer?.Email ?? "")</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted">Order Date</div>
+                            <div class="fw-semibold">@order.OrderDate.ToString("dd MMM yyyy, hh:mm tt")</div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+
+                        <div class="fw-semibold fs-5">
+                            Total: $@order.TotalAmount.ToString("0.00")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header bg-white">
+                    <div class="fw-semibold">Order Items</div>
+                </div>
+                <div class="card-body p-0">
+                    @if (order.OrderItems is null || order.OrderItems.Count == 0)
+                    {
+                        <div class="p-3 text-muted">No items found for this order.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Book</th>
+                                        <th style="width:90px" class="text-end">Qty</th>
+                                        <th style="width:140px" class="text-end">Unit Price</th>
+                                        <th style="width:140px" class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in order.OrderItems)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold">@(item.Book?.Title ?? $"Book #{item.BookId}")</div>
+                                                <div class="text-muted small">Book ID: @item.BookId</div>
+                                            </td>
+                                            <td class="text-end">@item.Quantity</td>
+                                            <td class="text-end">$@item.UnitPrice.ToString("0.00")</td>
+                                            <td class="text-end fw-semibold">$@item.LineTotal.ToString("0.00")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                    <div class="fw-semibold">Payment</div>
+                    @if (order.Payment is null)
+                    {
+                        <span class="badge text-bg-secondary">No payment</span>
+                    }
+                    else
+                    {
+                        <span class="badge text-bg-success">@SafeStatus(order.Payment.PaymentStatus)</span>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (order.Payment is null)
+                    {
+                        <p class="text-muted mb-0">No payment record found for this order.</p>
+                    }
+                    else
+                    {
+                        <dl class="row mb-0">
+                            <dt class="col-5">Method</dt>
+                            <dd class="col-7">@order.Payment.PaymentMethod</dd>
+
+                            <dt class="col-5">Status</dt>
+                            <dd class="col-7">@order.Payment.PaymentStatus</dd>
+
+                            <dt class="col-5">Amount</dt>
+                            <dd class="col-7">$@order.Payment.Amount.ToString("0.00")</dd>
+
+                            <dt class="col-5">Date Paid</dt>
+                            <dd class="col-7">@(order.Payment.DatePaid?.ToString("dd MMM yyyy, hh:mm tt") ?? "-")</dd>
+                        </dl>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+    private Orders? order;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            order = await AdminOrders.GetOrderDetailsAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private static string SafeStatus(string? s)
+        => string.IsNullOrWhiteSpace(s) ? "Unknown" : s;
+
+    private static string StatusBadge(string? s)
+    {
+        var st = (s ?? "").Trim().ToLower();
+        return st switch
+        {
+            "pending" => "text-bg-warning",
+            "paid" => "text-bg-primary",
+            "completed" => "text-bg-success",
+            "cancelled" => "text-bg-danger",
+            _ => "text-bg-secondary"
+        };
+    }
+}

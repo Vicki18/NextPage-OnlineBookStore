@@ -1,0 +1,86 @@
+﻿@page "/payments/create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStore.Domain
+@inject IDbContextFactory<OnlineBookStore.Data.OnlineBookStoreContext> DbFactory
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Administrator")]
+
+<PageTitle>Create</PageTitle>
+
+<h1>Create</h1>
+
+<h2>Payment</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Payment" OnValidSubmit="AddPayment" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <label for="paymentmethod" class="form-label">PaymentMethod:</label> 
+                <InputText id="paymentmethod" @bind-Value="Payment.PaymentMethod" class="form-control" /> 
+                <ValidationMessage For="() => Payment.PaymentMethod" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="paymentstatus" class="form-label">PaymentStatus:</label> 
+                <InputText id="paymentstatus" @bind-Value="Payment.PaymentStatus" class="form-control" /> 
+                <ValidationMessage For="() => Payment.PaymentStatus" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="amount" class="form-label">Amount:</label> 
+                <InputNumber id="amount" @bind-Value="Payment.Amount" class="form-control" /> 
+                <ValidationMessage For="() => Payment.Amount" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="datepaid" class="form-label">DatePaid:</label> 
+                <InputDate id="datepaid" @bind-Value="Payment.DatePaid" class="form-control" /> 
+                <ValidationMessage For="() => Payment.DatePaid" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="orderid" class="form-label">OrderId:</label> 
+                <InputNumber id="orderid" @bind-Value="Payment.OrderId" class="form-control" /> 
+                <ValidationMessage For="() => Payment.OrderId" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="datecreated" class="form-label">DateCreated:</label> 
+                <InputDate id="datecreated" @bind-Value="Payment.DateCreated" class="form-control" /> 
+                <ValidationMessage For="() => Payment.DateCreated" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="dateupdated" class="form-label">DateUpdated:</label> 
+                <InputDate id="dateupdated" @bind-Value="Payment.DateUpdated" class="form-control" /> 
+                <ValidationMessage For="() => Payment.DateUpdated" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="createdby" class="form-label">CreatedBy:</label> 
+                <InputText id="createdby" @bind-Value="Payment.CreatedBy" class="form-control" /> 
+                <ValidationMessage For="() => Payment.CreatedBy" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="updatedby" class="form-label">UpdatedBy:</label> 
+                <InputText id="updatedby" @bind-Value="Payment.UpdatedBy" class="form-control" /> 
+                <ValidationMessage For="() => Payment.UpdatedBy" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/payments">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Payment Payment { get; set; } = new();
+
+    
+    private async Task AddPayment()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Payment.Add(Payment);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/payments");
+    }
+}

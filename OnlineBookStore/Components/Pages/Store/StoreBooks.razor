@@ -1,0 +1,235 @@
+﻿@page "/store/books"
+@rendermode InteractiveServer
+
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineBookStore.Data
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject IDbContextFactory<OnlineBookStoreContext> DbFactory
+@inject CartService Cart
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Browse Books</PageTitle>
+
+@if (blockingAdmin)
+{
+    <p class="text-muted">Redirecting...</p>
+}
+else
+{
+    <h2 class="mb-3">Browse Books</h2>
+
+    
+    <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+
+        
+        <div style="min-width:260px; flex:1 1 260px;">
+            <input class="form-control"
+                   placeholder="Search Title / Author..."
+                   @bind="search"
+                   @bind:event="oninput" />
+        </div>
+
+        <!-- Category -->
+        <div style="min-width:220px; flex:0 1 260px;">
+            <select class="form-select" @bind="categoryId">
+                <option value="0">All Categories</option>
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Id">@c.CategoryName</option>
+                }
+            </select>
+        </div>
+
+        <!-- Sort -->
+        <div style="min-width:220px; flex:0 1 260px;">
+            <select class="form-select" @bind="sortBy">
+                <option value="title">Sort: Title (A-Z)</option>
+                <option value="price_asc">Sort: Price (Low → High)</option>
+                <option value="price_desc">Sort: Price (High → Low)</option>
+            </select>
+        </div>
+
+        <!-- Apply -->
+        <div style="min-width:120px; flex:0 0 120px;">
+            <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">
+                Apply
+            </button>
+        </div>
+
+        <!-- Clear -->
+        <div style="min-width:120px; flex:0 0 120px;">
+            <button class="btn btn-outline-secondary w-100" @onclick="ClearAsync">
+                Clear
+            </button>
+        </div>
+
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="alert alert-success">@message</div>
+    }
+
+    @if (books.Count == 0)
+    {
+        <p class="text-muted">No books found.</p>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var b in books)
+            {
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-3">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrWhiteSpace(b.CoverImageUrl))
+                        {
+                            <img class="card-img-top" src="@b.CoverImageUrl" alt="cover" style="height:180px; object-fit:cover;" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center justify-content-center bg-secondary-subtle"
+                                 style="height:180px;">
+                                <span class="text-muted">No Cover</span>
+                            </div>
+                        }
+
+                        <div class="card-body d-flex flex-column">
+                            <h6 class="card-title">@b.Title</h6>
+                            <div class="text-muted small mb-2">
+                                @(b.Author?.Name ?? "Unknown Author")
+                                •
+                                @(b.Category?.CategoryName ?? "Unknown Category")
+                            </div>
+                            <div class="fw-bold mb-2">$@b.Price</div>
+
+                            <div class="mt-auto d-grid gap-2">
+                                <button class="btn btn-outline-secondary" @onclick="() => GoDetails(b.Id)">
+                                    View Details
+                                </button>
+
+                                <button class="btn btn-primary"
+                                        disabled="@(b.StockQty <= 0 ? "disabled" : null)"
+                                        @onclick="() => AddToCartAsync(b)">
+                                    @(b.StockQty <= 0 ? "Out of Stock" : "Add to Cart")
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<Book> books = new();
+    private List<Category> categories = new();
+
+    private string search = "";
+    private int categoryId = 0;
+    private string sortBy = "title";
+    private string message = "";
+
+    private bool blockingAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated == true && principal.IsInRole("Administrator"))
+        {
+            blockingAdmin = true;
+            Nav.NavigateTo("/admin", true);
+            return;
+        }
+
+        await LoadCategoriesAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        categories = await db.Category.OrderBy(c => c.CategoryName).ToListAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        message = "";
+
+        using var db = await DbFactory.CreateDbContextAsync();
+        var query = db.Book
+            .Include(b => b.Author)
+            .Include(b => b.Category)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var keyword = search.Trim().ToLower();
+
+            
+            query = query.Where(b =>
+                (b.Title ?? "").ToLower().Contains(keyword) ||
+                (b.ISBN ?? "").ToLower().Contains(keyword) ||
+                ((b.Author != null ? b.Author.Name : "") ?? "").ToLower().Contains(keyword)
+            );
+        }
+
+        if (categoryId != 0)
+            query = query.Where(b => b.CategoryId == categoryId);
+
+        query = sortBy switch
+        {
+            "price_asc" => query.OrderBy(b => b.Price).ThenBy(b => b.Title),
+            "price_desc" => query.OrderByDescending(b => b.Price).ThenBy(b => b.Title),
+            _ => query.OrderBy(b => b.Title)
+        };
+
+        books = await query.ToListAsync();
+    }
+
+    
+    private async Task ClearAsync()
+    {
+        search = "";
+        categoryId = 0;
+        sortBy = "title";
+        await LoadAsync();
+    }
+
+    private async Task AddToCartAsync(Book b)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        
+        if (user?.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            var returnUrl = Uri.EscapeDataString(Nav.Uri);
+            Nav.NavigateTo($"Account/Login?ReturnUrl={returnUrl}");
+            return;
+        }
+
+        
+        if (user.IsInRole("Administrator"))
+        {
+            Nav.NavigateTo("/admin", true);
+            return;
+        }
+
+        // Logged in -> add to cart
+        Cart.Add(b, 1);
+        message = $"Added \"{b.Title}\" to cart.";
+    }
+
+    private void GoDetails(int id)
+    {
+        Nav.NavigateTo("/store/book/" + id);
+    }
+}

@@ -1,0 +1,81 @@
+﻿@page "/admin/reviews/delete"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject AdminReviewService Reviews
+@inject NavigationManager Nav
+
+<PageTitle>Delete Review</PageTitle>
+
+<h1 class="mb-1">Delete Review</h1>
+<div class="text-muted mb-3">This action cannot be undone.</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (item == null)
+{
+    <div class="alert alert-warning">Review not found.</div>
+    <a class="btn btn-outline-secondary" href="/admin/reviews">Back</a>
+}
+else
+{
+    <div class="alert alert-warning">
+        Are you sure you want to delete review <b>#@item.Id</b>?
+        <div class="small mt-2 text-muted">
+            Book: @((item.Book?.Title ?? "(Unknown Book)"))<br />
+            Customer: @((item.Customer?.FullName ?? "(Unknown Customer)"))<br />
+            Rating: @item.Rating / 5
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-danger" @onclick="DeleteAsync" disabled="@deleting">Delete</button>
+        <a class="btn btn-outline-secondary" href="/admin/reviews">Cancel</a>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] public int id { get; set; }
+
+    private bool loading = true;
+    private bool deleting;
+    private string? error;
+
+    private Review? item;
+
+    protected override async Task OnInitializedAsync()
+    {
+        item = await Reviews.GetReviewAsync(id);
+        loading = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        deleting = true;
+        error = null;
+
+        try
+        {
+            await Reviews.DeleteAsync(id);
+            Nav.NavigateTo("/admin/reviews");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            deleting = false;
+        }
+    }
+}

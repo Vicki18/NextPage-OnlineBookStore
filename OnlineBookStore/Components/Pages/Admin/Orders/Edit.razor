@@ -1,0 +1,187 @@
+﻿@page "/admin/orders/edit"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminOrderService AdminOrders
+
+<PageTitle>Update Order</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Update Order #@Id</h1>
+        <div class="text-muted">Change order status and payment reconciliation.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/admin/orders/details?id=@Id">Back</a>
+        <a class="btn btn-outline-primary" href="/admin/orders">All Orders</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (order is null)
+{
+    <div class="alert alert-warning">Order not found.</div>
+}
+else
+{
+    <EditForm Model="edit" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+
+        @if (!string.IsNullOrWhiteSpace(success))
+        {
+            <div class="alert alert-success">@success</div>
+        }
+
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header bg-white fw-semibold">Order</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <InputSelect class="form-select" @bind-Value="edit.Status">
+                                @foreach (var s in statusOptions)
+                                {
+                                    <option value="@s">@s</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted">Total</div>
+                            <div class="fw-semibold fs-5">$@order.TotalAmount.ToString("0.00")</div>
+                        </div>
+                        <div class="text-muted small">Customer: @(order.Customer?.FullName ?? "-")</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header bg-white fw-semibold">Payment</div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Method</label>
+                                <InputText class="form-control" @bind-Value="edit.PaymentMethod" placeholder="e.g., Card / PayNow" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <InputSelect class="form-select" @bind-Value="edit.PaymentStatus">
+                                    @foreach (var s in paymentStatusOptions)
+                                    {
+                                        <option value="@s">@s</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Date Paid (optional)</label>
+                                <InputDate class="form-control" @bind-Value="edit.DatePaid" />
+                                <div class="form-text">Leave blank if not paid yet.</div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border mt-3 mb-0">
+                            <div class="d-flex justify-content-between">
+                                <div class="text-muted">Payment amount</div>
+                                <div class="fw-semibold">Auto-sync with order total</div>
+                            </div>
+                            <div class="text-muted small">This prevents mismatches during reconciliation.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" type="submit" disabled="@saving">Save Changes</button>
+            <a class="btn btn-outline-secondary" href="/admin/orders/details?id=@Id">Cancel</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private bool loading = true;
+    private bool saving = false;
+    private string? error;
+    private string? success;
+
+    private Orders? order;
+    private EditModel edit = new();
+
+    private List<string> statusOptions = new() { "Pending", "Paid", "Completed", "Cancelled" };
+    private List<string> paymentStatusOptions = new() { "Pending", "Paid", "Failed", "Refunded" };
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            order = await AdminOrders.GetOrderDetailsAsync(Id);
+            if (order is null) return;
+
+            edit.Status = string.IsNullOrWhiteSpace(order.Status) ? "Pending" : order.Status;
+            edit.PaymentMethod = order.Payment?.PaymentMethod;
+            edit.PaymentStatus = order.Payment?.PaymentStatus;
+            edit.DatePaid = order.Payment?.DatePaid;
+
+            var dbStatuses = await AdminOrders.GetDistinctStatusesAsync();
+            foreach (var s in dbStatuses)
+                if (!string.IsNullOrWhiteSpace(s) && !statusOptions.Contains(s)) statusOptions.Add(s);
+            statusOptions = statusOptions.Distinct().OrderBy(s => s).ToList();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (order is null) return;
+        saving = true;
+        error = null;
+        success = null;
+
+        try
+        {
+            await AdminOrders.UpdateOrderStatusAsync(order.Id, edit.Status ?? "Pending");
+            await AdminOrders.UpsertPaymentAsync(order.Id, edit.PaymentMethod, edit.PaymentStatus, edit.DatePaid);
+
+            success = "Saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class EditModel
+    {
+        public string? Status { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? PaymentStatus { get; set; }
+        public DateTime? DatePaid { get; set; }
+    }
+}

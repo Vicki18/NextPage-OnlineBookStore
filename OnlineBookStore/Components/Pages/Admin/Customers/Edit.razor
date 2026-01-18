@@ -1,0 +1,162 @@
+﻿@page "/admin/customers/edit"
+@rendermode InteractiveServer
+
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+
+@inject AdminCustomerService AdminCustomers
+
+<PageTitle>Edit Customer</PageTitle>
+
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Edit Customer #@Id</h1>
+        <div class="text-muted">Update customer profile fields (admin-only).</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/admin/customers/details?id=@Id">Back</a>
+        <a class="btn btn-outline-primary" href="/admin/customers">All Customers</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (customer is null)
+{
+    <div class="alert alert-warning">Customer not found.</div>
+}
+else
+{
+    <EditForm Model="edit" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+
+        @if (!string.IsNullOrWhiteSpace(success))
+        {
+            <div class="alert alert-success">@success</div>
+        }
+
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">Profile</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Full Name</label>
+                        <InputText class="form-control" @bind-Value="edit.FullName" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <InputText class="form-control" @bind-Value="edit.Email" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Phone</label>
+                        <InputText class="form-control" @bind-Value="edit.Phone" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Address</label>
+                        <InputText class="form-control" @bind-Value="edit.Address" />
+                    </div>
+                </div>
+
+                <div class="alert alert-light border mt-3 mb-0">
+                    <div class="text-muted small">
+                        Note: User login/auth details are managed by Identity. This page edits the Customer profile table only.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" type="submit" disabled="@saving">Save</button>
+            <a class="btn btn-outline-secondary" href="/admin/customers/details?id=@Id">Cancel</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private bool loading = true;
+    private bool saving = false;
+
+    private string? error;
+    private string? success;
+
+    private Customer? customer;
+    private EditModel edit = new();
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            customer = await AdminCustomers.GetCustomerDetailsAsync(Id);
+            if (customer is null) return;
+
+            edit.Id = customer.Id;
+            edit.FullName = customer.FullName;
+            edit.Email = customer.Email;
+            edit.Phone = customer.Phone;
+            edit.Address = customer.Address;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (customer is null) return;
+
+        saving = true;
+        error = null;
+        success = null;
+
+        try
+        {
+            var updated = new Customer
+            {
+                Id = edit.Id,
+                FullName = edit.FullName,
+                Email = edit.Email,
+                Phone = edit.Phone,
+                Address = edit.Address
+            };
+
+            await AdminCustomers.UpdateCustomerAsync(updated);
+            success = "Customer updated successfully.";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class EditModel
+    {
+        public int Id { get; set; }
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+    }
+}

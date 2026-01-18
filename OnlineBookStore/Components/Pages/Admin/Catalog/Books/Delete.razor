@@ -1,0 +1,79 @@
+﻿@page "/admin/books/delete"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using OnlineBookStore.Domain
+@using OnlineBookStore.Services
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject AdminBookService Books
+@inject NavigationManager Nav
+
+<PageTitle>Delete Book</PageTitle>
+
+<h1 class="mb-1">Delete Book</h1>
+<div class="text-muted mb-3">This action cannot be undone.</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (loading)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (item == null)
+{
+    <div class="alert alert-warning">Book not found.</div>
+    <a class="btn btn-outline-secondary" href="/admin/books">Back</a>
+}
+else
+{
+    <div class="alert alert-warning">
+        Are you sure you want to delete <b>@(item.Title ?? "(Untitled)")</b>?
+        <div class="small mt-2 text-muted">
+            If this book is already part of order history, deletion is blocked (use StockQty = 0 instead).
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-danger" @onclick="DeleteAsync" disabled="@deleting">Delete</button>
+        <a class="btn btn-outline-secondary" href="/admin/books">Cancel</a>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] public int id { get; set; }
+
+    private bool loading = true;
+    private bool deleting;
+    private string? error;
+
+    private Book? item;
+
+    protected override async Task OnInitializedAsync()
+    {
+        item = await Books.GetBookAsync(id);
+        loading = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        deleting = true;
+        error = null;
+
+        try
+        {
+            await Books.DeleteAsync(id);
+            Nav.NavigateTo("/admin/books");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            deleting = false;
+        }
+    }
+}
